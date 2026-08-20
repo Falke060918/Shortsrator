@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.claude/settings.local.json
+.claude/worktrees/
+.claude/review/
+.claude/perf/
+docs/MACHINE.md
+CLAUDE.local.md
