@@ -84,6 +84,56 @@ describe("HiggsfieldClient.getRequest", () => {
     const snap = await client.getRequest("req-1");
     expect(snap.status).toBe("in_progress");
   });
+
+  it("신 표면 video.url / images[].url 형상도 정규화한다", async () => {
+    const fetchFn = (async () =>
+      jsonResponse({
+        status: "completed",
+        request_id: "req-1",
+        video: { url: "https://cdn/clip.mp4" },
+        images: [{ url: "https://cdn/i.png" }],
+      })) as typeof fetch;
+    const client = makeClient(fetchFn);
+    const snap = await client.getRequest("req-1");
+    expect(snap.resultUrls).toEqual([
+      "https://cdn/clip.mp4",
+      "https://cdn/i.png",
+    ]);
+  });
+
+  it("구 표면 404/405면 신 표면 /requests/{id}/status 로 폴백하고, 이후엔 바로 신 표면을 쓴다", async () => {
+    const calls: string[] = [];
+    const fetchFn = (async (url: unknown) => {
+      calls.push(String(url));
+      if (String(url).includes("/v1/requests/")) {
+        // 신 표면 제출분에 대한 구 표면 실응답 (2026-08-21 실측)
+        return jsonResponse({ detail: "Method Not Allowed" }, 405);
+      }
+      return jsonResponse({
+        status: "completed",
+        request_id: "req-9",
+        video: { url: "https://cdn/clip.mp4" },
+      });
+    }) as typeof fetch;
+    const client = makeClient(fetchFn);
+    const snap = await client.getRequest("req-9");
+    expect(snap.status).toBe("completed");
+    expect(calls).toEqual([
+      "https://platform.higgsfield.ai/v1/requests/req-9",
+      "https://platform.higgsfield.ai/requests/req-9/status",
+    ]);
+    await client.getRequest("req-9");
+    expect(calls).toHaveLength(3);
+    expect(calls[2]).toBe("https://platform.higgsfield.ai/requests/req-9/status");
+  });
+
+  it("canceled 는 failed 로 정규화한다 (신 표면 종결 상태)", async () => {
+    const fetchFn = (async () =>
+      jsonResponse({ status: "canceled", request_id: "r" })) as typeof fetch;
+    const client = makeClient(fetchFn);
+    const snap = await client.getRequest("r");
+    expect(snap.status).toBe("failed");
+  });
 });
 
 describe("HiggsfieldClient.waitForCompletion", () => {
@@ -112,6 +162,74 @@ describe("HiggsfieldClient.waitForCompletion", () => {
     const snap = await client.waitForCompletion("req-1");
     expect(snap.status).toBe("failed");
     expect(snap.error).toBe("boom");
+  });
+});
+
+describe("HiggsfieldClient.uploadFile", () => {
+  it("발급 → upload_headers 그대로 PUT → public_url 반환 (실측 형상)", async () => {
+    const { mkdtemp, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const dir = await mkdtemp(path.join(tmpdir(), "hf-upload-test-"));
+    const localPath = path.join(dir, "frame.png");
+    await writeFile(localPath, "png-bytes");
+
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchFn = (async (url: unknown, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      if (init?.method === "POST") {
+        expect(JSON.parse(String(init.body))).toEqual({
+          content_type: "image/png",
+        });
+        return jsonResponse({
+          public_url: "https://cdn/inputs/u1.png",
+          upload_url: "https://s3/presigned",
+          content_type: "image/png",
+          upload_headers: {
+            "Content-Type": "image/png",
+            "x-amz-tagging": "retention=temporary",
+          },
+        });
+      }
+      return new Response(null, { status: 200 });
+    }) as typeof fetch;
+
+    const client = makeClient(fetchFn);
+    await expect(client.uploadFile(localPath)).resolves.toBe(
+      "https://cdn/inputs/u1.png",
+    );
+    const put = calls[1];
+    expect(put.url).toBe("https://s3/presigned");
+    expect(put.init?.method).toBe("PUT");
+    // x-amz-tagging 이 서명에 포함된다 — 누락 시 403 (2026-08-21 실측)
+    expect(
+      (put.init?.headers as Record<string, string>)["x-amz-tagging"],
+    ).toBe("retention=temporary");
+  });
+
+  it("PUT 실패는 상태코드를 담은 에러로 던진다", async () => {
+    const { mkdtemp, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const dir = await mkdtemp(path.join(tmpdir(), "hf-upload-test-"));
+    const localPath = path.join(dir, "frame.png");
+    await writeFile(localPath, "png-bytes");
+
+    const fetchFn = (async (_url: unknown, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return jsonResponse({
+          public_url: "https://cdn/inputs/u1.png",
+          upload_url: "https://s3/presigned",
+          upload_headers: { "Content-Type": "image/png" },
+        });
+      }
+      return new Response("SignatureDoesNotMatch", { status: 403 });
+    }) as typeof fetch;
+
+    const client = makeClient(fetchFn);
+    const error = await client.uploadFile(localPath).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(HiggsfieldApiError);
+    expect((error as HiggsfieldApiError).statusCode).toBe(403);
   });
 });
 

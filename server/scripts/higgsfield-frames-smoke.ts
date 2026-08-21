@@ -4,8 +4,9 @@
  *
  * 실행 (API 키가 .env에 있을 때만 동작):
  *   npx tsx server/scripts/higgsfield-frames-smoke.ts \
- *     --start <시작프레임 URL> --end <끝프레임 URL> \
+ *     --start <시작프레임 URL|로컬 경로> --end <끝프레임 URL|로컬 경로> \
  *     [--motion "fly-through the entrance"] [--duration-ms 3000] [--timeout-ms 180000]
+ *   (로컬 경로는 어댑터가 프리사인 업로드로 원격 URL로 바꿔 제출한다)
  *
  * 종료 코드:
  *   0 = frames 지원 확정 (클립 생성 완료)

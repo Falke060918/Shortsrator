@@ -38,7 +38,7 @@
       "purpose": "훅/궁금증 (오프닝)",
       "frequency": "high",
       "motion": {
-        "motion_id": "slow_push_in",
+        "motion_id": "81ca2cd2-05db-4222-9ba0-a32e5185adfb",
         "prompt": "The camera slowly pushes in toward the subject, building curiosity."
       }
     },
@@ -48,7 +48,7 @@
       "purpose": "크기·스케일 강조",
       "frequency": "high",
       "motion": {
-        "motion_id": "dolly_tilt",
+        "motion_id": "2c9af101-fe7a-4299-91f3-e44431a0576f",
         "prompt": "The camera dollies forward, then smoothly tilts upward to emphasize the massive scale of the structure."
       }
     },
@@ -58,7 +58,7 @@
       "purpose": "구조 설명, 리빌 컷",
       "frequency": "high",
       "motion": {
-        "motion_id": "orbit",
+        "motion_id": "ea035f68-b350-40f1-b7f4-7dff999fdd67",
         "prompt": "The camera arcs slowly around the subject, revealing the hidden structural connections."
       }
     },
@@ -68,7 +68,7 @@
       "purpose": "내부 진입",
       "frequency": "high",
       "motion": {
-        "motion_id": "fly_through",
+        "motion_id": "7673d9e0-208c-4cf8-8b72-fce5b0e92ecb",
         "prompt": "The camera flies forward, passing smoothly through the structure into the interior space."
       }
     },
@@ -78,7 +78,7 @@
       "purpose": "스케일, \"지하로\" 전환",
       "frequency": "medium",
       "motion": {
-        "motion_id": "descending_drone",
+        "motion_id": "b26dcbe5-e784-4893-b8a3-2bd4f848e90a",
         "prompt": "The camera descends steadily like a drone, sinking toward the lower structure."
       }
     },
@@ -88,7 +88,7 @@
       "purpose": "정체 공개 (디테일→전체)",
       "frequency": "medium",
       "motion": {
-        "motion_id": "macro_pull_back",
+        "motion_id": "679c128d-a109-4267-8007-12f653f6346d",
         "prompt": "Starting on a macro detail, the camera pulls back to reveal the full structure."
       }
     },
@@ -98,7 +98,7 @@
       "purpose": "물·하중·힘의 흐름 추적",
       "frequency": "medium",
       "motion": {
-        "motion_id": "follow_path",
+        "motion_id": "1d5ee550-a8b2-4200-8909-4ca7795911dc",
         "prompt": "The camera follows the path of the flow along the structure, tracing how the load travels."
       }
     }
