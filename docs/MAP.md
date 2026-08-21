@@ -10,6 +10,10 @@
 | `shared/src/` | 워크스페이스 공용 타입·도메인 — `domain.ts`, `dto.ts`, `adapters.ts`(어댑터 인터페이스), `index.ts` |
 | `server/src/` | Fastify 서버 — `app.ts` 진입점 |
 | `server/src/adapters/` | 미디어 생성 어댑터 계층 (아래 상세) |
+| `server/src/db/` | SQLite 래퍼(`db.ts`)·DAO(`dao.ts`)·마이그레이션(`migrate.ts`, `migrations/*.sql`) |
+| `server/src/pipeline/` | 상태머신(`state-machine.ts`)·게이트 정책(`gates.ts`)·잡 러너(`job-runner.ts`)·엔진(`engine.ts`)·샷리스트(`shotlist.ts`)·start_end 배선(`start-end.ts`)·비용 집계(`cost.ts`) — 공개 표면은 `index.ts` |
+| `server/src/theme/` | 테마 프리셋 로더·프롬프트 빌더 (`presets/*.json`) |
+| `server/src/media/` | ffmpeg 조립(`assemble.ts`)·프로브 |
 | `server/scripts/` | 단발 실행 스크립트 (스모크 등) |
 | `web/src/` | Vite/React UI — `main.tsx`, `App.tsx`, `lib/utils.ts` |
 | `scripts/` | 템플릿/저장소 관리 스크립트 (제품 코드 아님) |
