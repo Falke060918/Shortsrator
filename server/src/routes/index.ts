@@ -4,6 +4,12 @@
  */
 import type { FastifyInstance } from "fastify";
 import fastifyStatic from "@fastify/static";
+import {
+  EpisodeNotFoundError,
+  GateNotApprovedError,
+  GateStateMismatchError,
+  InvalidTransitionError,
+} from "../pipeline/index.js";
 import type { RouteContext } from "./context.js";
 import { PipelineNotWiredError } from "./pipeline-service.js";
 import { registerStateRoutes } from "./state.js";
@@ -24,10 +30,26 @@ export async function registerApiRoutes(
   app: FastifyInstance,
   ctx: RouteContext,
 ): Promise<void> {
-  // 파이프라인 미배선(503) 매핑 — 나머지는 Fastify 기본 처리에 맡긴다.
+  // 파이프라인 에러 → HTTP 매핑. 엔진 에러는 배럴(../pipeline/index.js)로만 식별하고,
+  // 어댑터/배선 계층 에러(ManualFileValidationError·StageBusyError)는 계층 결합을
+  // 피하려고 name 으로 식별한다. 나머지는 Fastify 기본 처리에 맡긴다.
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof PipelineNotWiredError) {
       return reply.code(503).send({ error: error.message });
+    }
+    if (error instanceof EpisodeNotFoundError) {
+      return reply.code(404).send({ error: error.message });
+    }
+    if (
+      error instanceof InvalidTransitionError ||
+      error instanceof GateNotApprovedError ||
+      error instanceof GateStateMismatchError ||
+      (error instanceof Error && error.name === "StageBusyError")
+    ) {
+      return reply.code(409).send({ error: error.message });
+    }
+    if (error instanceof Error && error.name === "ManualFileValidationError") {
+      return reply.code(400).send({ error: error.message });
     }
     throw error;
   });

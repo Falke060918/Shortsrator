@@ -5,11 +5,8 @@ import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyMultipart from "@fastify/multipart";
 import { createDao, migrate, openDb, type Dao } from "./db/index.js";
-import {
-  createNotWiredPipeline,
-  registerApiRoutes,
-  type PipelineService,
-} from "./routes/index.js";
+import { registerApiRoutes, type PipelineService } from "./routes/index.js";
+import { createWiredPipeline, ensureThemePresets } from "./wiring/index.js";
 
 /** 로컬 1인 앱 — 외부 바인딩 금지 (docs/03-architecture.md 보안 경계) */
 const HOST = "127.0.0.1";
@@ -28,12 +25,14 @@ const defaultWorkspaceDir = path.join(repoRoot, "workspace");
 export interface BuildAppOptions {
   /** 테스트 주입용 — 미지정 시 workspaceDir의 SQLite 파일을 열어 마이그레이션한다. */
   dao?: Dao;
-  /** pipeline-engine(#8) 실구현 — 미지정 시 NotWired(조작 요청 503) */
+  /** 테스트 주입용 — 미지정 시 실배선(wiring/createWiredPipeline)을 조립한다 */
   pipeline?: PipelineService;
   /** workspace 루트 — /media 정적 서빙·MANUAL 드롭 저장 위치 */
   workspaceDir?: string;
   /** dao 미지정 시 열 DB 파일 경로 (기본: {workspace}/shortsrator.db) */
   dbPath?: string;
+  /** 테마 프리셋 디렉터리 — 미지정 시 저장소 루트 presets/ */
+  presetsDir?: string;
 }
 
 export async function buildApp(options: BuildAppOptions = {}) {
@@ -53,7 +52,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
       db.close();
     });
   }
-  const pipeline = options.pipeline ?? createNotWiredPipeline();
+  // 실배선(issue #10): 프리셋 로드 → 실제 파이프라인 조립.
+  // 상태 전이는 pipeline 배럴(PipelineEngine)만 경유한다 — 게이트 불가침 유지.
+  let pipeline = options.pipeline;
+  if (!pipeline) {
+    ensureThemePresets(dao, options.presetsDir);
+    pipeline = createWiredPipeline({ dao, workspaceDir });
+  }
 
   app.get("/api/health", async () => ({ status: "ok" }));
 

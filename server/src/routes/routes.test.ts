@@ -420,15 +420,35 @@ describe("GET /media/*", () => {
   });
 });
 
-// ---------------------------------------------------------------- 파이프라인 미배선(기본 주입)
+// ---------------------------------------------------------------- 파이프라인 기본 주입(#10 실배선)
 
-describe("파이프라인 미배선", () => {
-  it("advance가 503을 반환한다 (NotWiredPipeline)", async () => {
+describe("파이프라인 기본 주입", () => {
+  it("기본 주입은 실배선이다 — 게이트 대기 중 advance는 409(게이트 불가침)", async () => {
     const { buildApp } = await import("../app.js");
     const { createTestDao, seedBasic } = await import("./test-utils.js");
     const dao = createTestDao();
     seedBasic(dao);
+    // ep1은 SCRIPT_GATE 대기 — 승인 없는 advance는 엔진이 거부한다
     const app = await buildApp({ dao, workspaceDir: t.workspaceDir });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/episodes/ep1/advance",
+    });
+    expect(res.statusCode).toBe(409);
+    await app.close();
+  });
+
+  it("NotWiredPipeline을 명시 주입하면 advance가 503을 반환한다", async () => {
+    const { buildApp } = await import("../app.js");
+    const { createNotWiredPipeline } = await import("./pipeline-service.js");
+    const { createTestDao, seedBasic } = await import("./test-utils.js");
+    const dao = createTestDao();
+    seedBasic(dao);
+    const app = await buildApp({
+      dao,
+      pipeline: createNotWiredPipeline(),
+      workspaceDir: t.workspaceDir,
+    });
     const res = await app.inject({
       method: "POST",
       url: "/api/episodes/ep1/advance",
