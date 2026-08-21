@@ -59,7 +59,8 @@
     button { font-family: inherit; cursor: pointer; }
     :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
 
-    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 80px; }
+    .wrap { max-width: 1560px; margin: 0 auto; padding: 0 32px 80px; }
+    @media (max-width: 720px) { .wrap { padding: 0 20px 64px; } }
 
     /* ── 헤더 ─────────────────────────────────────────── */
     header.app {
@@ -166,7 +167,7 @@
     .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
 
     /* ══ 화면 1 — 에피소드 대시보드 ═══════════════════ */
-    .dash-top { display: grid; grid-template-columns: 1fr 300px; gap: 16px; margin-bottom: 16px; }
+    .dash-top { display: grid; grid-template-columns: 1fr 340px; gap: 16px; margin-bottom: 16px; }
     @media (max-width: 860px) { .dash-top { grid-template-columns: 1fr; } }
 
     .ep-card { padding: 20px; }
@@ -230,7 +231,7 @@
     .list-head h3 { font-size: 12px; color: var(--muted); font-weight: 600; }
 
     /* ══ 화면 2 — 파이프라인 진행 ═════════════════════ */
-    .pipe-layout { display: grid; grid-template-columns: 1fr 236px; gap: 20px; align-items: start; }
+    .pipe-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
     @media (max-width: 940px) { .pipe-layout { grid-template-columns: 1fr; } }
 
     /* 메인 스테퍼: 단계 5 + 게이트 4 인터리브 */
@@ -260,6 +261,50 @@
     .gate-state.waiting { color: var(--gold); }
     .gate-state.locked { color: var(--locked); }
 
+    /* 단계별 적용 규칙 패널 (테마 규칙 노출) */
+    .rules-head { display: flex; align-items: baseline; gap: 10px; margin: 22px 0 12px; }
+    .rules-head h3 { font-size: 13.5px; font-weight: 700; }
+    .rules-head .hint { font-size: 12px; color: var(--faint); }
+    .rules-head .theme-ref { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--faint); }
+
+    .rules-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: start; }
+    @media (max-width: 1180px) { .rules-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { .rules-grid { grid-template-columns: 1fr; } }
+
+    details.rule-panel { overflow: hidden; }
+    details.rule-panel summary {
+      list-style: none; cursor: pointer;
+      display: flex; align-items: center; gap: 9px;
+      padding: 13px 15px;
+      font-size: 12.5px; font-weight: 700;
+      transition: background 0.15s;
+    }
+    details.rule-panel summary::-webkit-details-marker { display: none; }
+    details.rule-panel summary:hover { background: rgba(255, 255, 255, 0.02); }
+    details.rule-panel summary .stage-no {
+      font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+      color: var(--faint); border: 1px solid var(--line); border-radius: 4px;
+      padding: 1px 6px; flex: none;
+    }
+    details.rule-panel summary .chev {
+      margin-left: auto; color: var(--faint); font-size: 10px;
+      transition: transform 0.15s; flex: none;
+    }
+    details.rule-panel[open] summary .chev { transform: rotate(90deg); }
+    details.rule-panel.now { border-color: rgba(227, 179, 76, 0.3); }
+    details.rule-panel.now summary .stage-no { color: var(--gold); border-color: rgba(227, 179, 76, 0.4); }
+
+    .rule-body { padding: 2px 15px 14px; border-top: 1px solid var(--line-soft); }
+    .rule-item { padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--muted); line-height: 1.55; }
+    .rule-item:first-child { border-top: none; }
+    .rule-item .rk {
+      display: block; font-family: var(--font-mono); font-size: 10px;
+      letter-spacing: 0.08em; color: var(--faint); font-weight: 600; margin-bottom: 3px;
+    }
+    .rule-item .mono { font-size: 11px; color: var(--text); }
+    .rule-item .no { color: var(--danger); font-weight: 600; }
+    .rule-item .em { color: var(--gold); }
+
     /* 컷 테이블 */
     .cut-table-card { margin-top: 20px; overflow: hidden; }
     .cut-table-head {
@@ -281,7 +326,7 @@
     table.cuts tr:hover td { background: rgba(255, 255, 255, 0.015); }
 
     .cut-no { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
-    .cut-line { font-size: 13px; max-width: 320px; }
+    .cut-line { font-size: 13px; max-width: 560px; }
     .cut-cam { display: block; font-size: 11px; color: var(--faint); margin-top: 3px; font-family: var(--font-mono); }
     .tts-len { font-family: var(--font-mono); font-size: 13px; white-space: nowrap; }
     .tts-len .unit { color: var(--faint); font-size: 11px; }
@@ -402,6 +447,14 @@
       border-radius: var(--r-sm); line-height: 1.7;
     }
     .style-lock b { color: var(--faint); font-weight: 600; letter-spacing: 0.06em; }
+
+    /* 게이트 화면 — 이미지 생성 규칙 3분할 (넓은 폭 활용) */
+    .gen-rules { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; margin-top: 18px; }
+    @media (max-width: 1080px) { .gen-rules { grid-template-columns: 1fr; } }
+    .gen-rules .style-lock { margin-top: 0; }
+    .style-lock .no { color: var(--danger); font-weight: 600; }
+    .style-lock .ma-row { display: flex; gap: 8px; }
+    .style-lock .ma-row b { min-width: 108px; }
 
     .gate-actions {
       display: flex; align-items: center; gap: 10px; margin-top: 18px;
@@ -610,6 +663,97 @@
         </div>
       </div>
 
+      <div class="rules-head">
+        <h3>단계별 적용 규칙</h3>
+        <span class="hint">테마가 각 단계에 강제하는 규칙 — 패널을 접고 펼 수 있습니다</span>
+        <span class="theme-ref">theme: architecture-mystery v1</span>
+      </div>
+      <div class="rules-grid">
+        <details class="card rule-panel" open>
+          <summary><span class="stage-no">STEP 2</span>TTS — 오디오 우선<span class="chev">▶</span></summary>
+          <div class="rule-body">
+            <div class="rule-item">
+              <span class="rk">VOICE LOCK</span>
+              다큐/미스터리 톤의 깊고 웅장한 남성 보이스로 <span class="em">고정</span> — 채널 전체에서 절대 바꾸지 않는다. 1순위 ElevenLabs, 한국어 억양 이슈 시 Typecast.
+            </div>
+            <div class="rule-item">
+              <span class="rk">실측 원칙</span>
+              문장 단위로 TTS를 먼저 생성 — <span class="em">오디오 실측 길이 = 컷 길이</span>. 문장별 파일 길이가 곧 컷 길이다.
+            </div>
+            <div class="rule-item">
+              <span class="rk">대본 규칙</span>
+              한국어 · 초당 4~5음절 · 문장 1개 = 샷 1개 · 훅 → 정보 → 마무리.
+            </div>
+          </div>
+        </details>
+
+        <details class="card rule-panel now" open>
+          <summary><span class="stage-no">STEP 3</span>첫 프레임 — 이미지 생성<span class="chev">▶</span></summary>
+          <div class="rule-body">
+            <div class="rule-item">
+              <span class="rk">STYLE LOCK — 모든 프롬프트 끝에 고정 부착</span>
+              <span class="mono">photorealistic architectural visualization, cinematic documentary lighting, physically accurate materials, museum-quality reconstruction, muted cool color grade, high structural detail, 9:16 vertical</span>
+            </div>
+            <div class="rule-item">
+              <span class="rk">MASTER ASSET — 주제당 기준 4장 재사용</span>
+              <span class="mono">EXTERIOR · INTERIOR · CROSS-SECTION · CUTAWAY</span> — 이걸 안 쓰면 컷마다 다른 건물이 나온다.
+            </div>
+            <div class="rule-item">
+              <span class="rk">AI 생성 금지</span>
+              <span class="no">화살표(→↓) · X 표시 · 원 · 라인 · 수치 · 그래프</span> — 조립 후 편집 단계에서 오버레이.
+            </div>
+            <div class="rule-item">
+              <span class="rk">후보 · 반려</span>
+              샷당 2~4장 생성 · <span class="em">반려율 60%가 정상</span> — 승인 데이터가 첫 프레임 승인률(목표 ≥40%)이 된다.
+            </div>
+          </div>
+        </details>
+
+        <details class="card rule-panel" open>
+          <summary><span class="stage-no">STEP 4</span>클립 — I2V 영상 생성<span class="chev">▶</span></summary>
+          <div class="rule-body">
+            <div class="rule-item">
+              <span class="rk">프롬프트 공식 — motion만 기술</span>
+              <span class="mono">CAMERA + PATH + REVEAL + ENV MOTION + CONTINUITY</span> — 구도·조명은 첫 프레임이 이미 정의했다.
+            </div>
+            <div class="rule-item">
+              <span class="rk">동작 개수 제한</span>
+              한 클립 카메라 동작 <span class="em">1~2개</span> · 리빌 컷만 최대 3개(A→B→C). 한꺼번에 넣으면 망가진다.
+            </div>
+            <div class="rule-item">
+              <span class="rk">카메라 7종 매핑</span>
+              <span class="mono">① push-in</span> 궁금증 · <span class="mono">② dolly+tilt</span> 스케일 · <span class="mono">③ orbit</span> 리빌 · <span class="mono">④ fly-through</span> 내부 진입 · <span class="mono">⑤ descending</span> 지하 전환 · <span class="mono">⑥ macro→pull back</span> 정체 공개 · <span class="mono">⑦ follow path</span> 힘의 흐름
+            </div>
+            <div class="rule-item">
+              <span class="rk">채택 원칙</span>
+              샷당 2~3회 생성 · 8초 중 <span class="em">1.5~3초만 발췌</span> — 폐기 전제, 채택률 목표 ≥30%.
+            </div>
+          </div>
+        </details>
+
+        <details class="card rule-panel" open>
+          <summary><span class="stage-no">STEP 5</span>조립 — ffmpeg<span class="chev">▶</span></summary>
+          <div class="rule-body">
+            <div class="rule-item">
+              <span class="rk">규격</span>
+              <span class="mono">9:16 · 1080×1920 · ≤60s</span> Shorts 검증 — 컷 길이는 항상 TTS 실측을 따른다.
+            </div>
+            <div class="rule-item">
+              <span class="rk">컷 리듬</span>
+              초반 3컷 1.5~2초 → 중반 2.5~3초 → <span class="em">리빌 컷만 4초</span>. 균등 분할 금지.
+            </div>
+            <div class="rule-item">
+              <span class="rk">BGM · SFX</span>
+              한스 짐머풍 웅장/미스터리 오케스트라 <span class="em">2~3곡만 로테이션</span> · 컷 전환마다 트랜지션음 + 리빌 지점 저음 임팩트 · <span class="no">무음 0.5초 이상 금지</span>.
+            </div>
+            <div class="rule-item">
+              <span class="rk">오버레이</span>
+              화살표·수치가 필요한 편은 CapCut 마감 모드 — 조립본 + 오버레이 지시서 내보내기.
+            </div>
+          </div>
+        </details>
+      </div>
+
       <div class="pipe-layout" style="margin-top:20px">
         <article class="card cut-table-card">
           <div class="cut-table-head">
@@ -772,9 +916,25 @@
         </article>
       </div>
 
-      <div class="style-lock">
-        <b>STYLE LOCK</b> — 모든 후보에 동일 부착됨 · photorealistic architectural visualization, cinematic documentary lighting,
-        physically accurate materials, museum-quality reconstruction, muted cool color grade, high structural detail, 9:16 vertical
+      <div class="gen-rules">
+        <div class="style-lock">
+          <b>STYLE LOCK</b> — 모든 후보에 동일 부착됨<br />
+          photorealistic architectural visualization, cinematic documentary lighting,
+          physically accurate materials, museum-quality reconstruction, muted cool color grade, high structural detail, 9:16 vertical
+        </div>
+        <div class="style-lock">
+          <b>MASTER ASSET</b> — 주제당 기준 4장 재사용
+          <div class="ma-row"><b>EXTERIOR</b> 외부 전경</div>
+          <div class="ma-row"><b>INTERIOR</b> 내부</div>
+          <div class="ma-row"><b>CROSS-SECTION</b> 단면도</div>
+          <div class="ma-row"><b>CUTAWAY</b> 구조 컷어웨이</div>
+        </div>
+        <div class="style-lock">
+          <b>AI 생성 금지</b> — 편집 오버레이로만<br />
+          <span class="no">화살표(→↓) · X 표시 · 원 · 라인 · 수치 · 그래프</span><br />
+          영상은 피사체·카메라·구조 변화만 생성.<br />
+          반려율 60%는 정상 — 승인률 목표 ≥40%.
+        </div>
       </div>
 
       <div class="card gate-actions">
