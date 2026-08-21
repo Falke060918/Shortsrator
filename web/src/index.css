@@ -10,48 +10,40 @@
   --font-mono: "Geist Mono", D2Coding, monospace;
 }
 
-/* shadcn/ui 토큰 (Tailwind v4, baseColor: neutral) */
+/* shadcn/ui 토큰 — 승인 목업(mockup/index.html)의 다크 팔레트를 그대로 매핑.
+   금색(--gold)은 사람이 개입하는 게이트의 색 = primary. 라이트 테마 없음(항상 다크). */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
+  --background: #0e1216;
+  --foreground: #e9eef3;
+  --card: #161c23;
+  --card-foreground: #e9eef3;
+  --popover: #1c242d;
+  --popover-foreground: #e9eef3;
+  --primary: #e3b34c;
+  --primary-foreground: #17130a;
+  --secondary: #1c242d;
+  --secondary-foreground: #e9eef3;
+  --muted: #1c242d;
+  --muted-foreground: #909dab;
+  --accent: #1c242d;
+  --accent-foreground: #e9eef3;
+  --destructive: #d0704f;
+  --border: #28313c;
+  --input: #28313c;
+  --ring: #e3b34c;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* 목업 전용 시맨틱 색 */
+  --gold: #e3b34c;
+  --gold-dim: rgba(227, 179, 76, 0.14);
+  --ok: #55b87e;
+  --ok-dim: rgba(85, 184, 126, 0.13);
+  --info: #6b96d6;
+  --info-dim: rgba(107, 150, 214, 0.13);
+  --locked: #5a6673;
+  --faint: #5c6875;
+  --line-soft: #202932;
+  --surface-2: #1c242d;
 }
 
 @theme inline {
@@ -77,6 +69,16 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-dim: var(--gold-dim);
+  --color-ok: var(--ok);
+  --color-ok-dim: var(--ok-dim);
+  --color-info: var(--info);
+  --color-info-dim: var(--info-dim);
+  --color-locked: var(--locked);
+  --color-faint: var(--faint);
+  --color-line-soft: var(--line-soft);
+  --color-surface-2: var(--surface-2);
 }
 
 @layer base {
@@ -84,12 +86,49 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
+    /* 목업의 오쿨루스 광 — 상단 금색 라디얼 */
+    background:
+      radial-gradient(1100px 420px at 50% -180px, rgba(227, 179, 76, 0.07), transparent 65%),
+      var(--background);
+    font-size: 14px;
+    line-height: 1.55;
   }
   code,
   pre,
   kbd,
   samp {
     @apply font-mono;
+  }
+}
+
+/* 건축 그라디언트 placeholder 세트 (목업 동일) — fixture 썸네일/후보 이미지 대용 */
+@layer utilities {
+  .g-pantheon-ext {
+    background: linear-gradient(168deg, #2c3a4a 0%, #22303e 38%, #3d3526 72%, #191d22 100%);
+  }
+  .g-pantheon-int {
+    background:
+      radial-gradient(90% 55% at 50% 12%, rgba(236, 192, 99, 0.75), rgba(120, 96, 48, 0.25) 42%, transparent 65%),
+      linear-gradient(180deg, #232c36, #15191e);
+  }
+  .g-cross {
+    background:
+      repeating-linear-gradient(90deg, #2a3542 0 7px, #232c37 7px 14px),
+      linear-gradient(180deg, #2a3542, #1a212a);
+    background-blend-mode: overlay;
+  }
+  .g-cutaway {
+    background: conic-gradient(from 210deg at 60% 35%, #35424f, #232c36 32%, #4a3f28 55%, #1a2027 78%, #35424f);
+  }
+  .g-oculus {
+    background:
+      radial-gradient(45% 30% at 50% 22%, #ecc063, rgba(227, 179, 76, 0.2) 55%, transparent 70%),
+      linear-gradient(180deg, #1f2731, #12161b);
+  }
+  .g-phone {
+    background:
+      radial-gradient(70% 42% at 50% 16%, rgba(236, 192, 99, 0.5), rgba(120, 96, 48, 0.14) 48%, transparent 68%),
+      linear-gradient(180deg, #232d38, #101419);
   }
 }
