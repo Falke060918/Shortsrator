@@ -1,0 +1,177 @@
+{
+  "id": "mysterious-architecture",
+  "title": "신비한 건축 (architecture-mystery)",
+  "status": "DRAFT",
+  "version": 1,
+  "format": {
+    "aspect": "9:16",
+    "pilot_total_ms": 15000,
+    "pilot_shot_count": 5
+  },
+  "style_string": "photorealistic architectural visualization, cinematic documentary lighting, physically accurate materials, museum-quality reconstruction, muted cool color grade, high structural detail, 9:16 vertical",
+  "master_asset_schema": [
+    {
+      "role": "EXTERIOR",
+      "description": "외부 전경 — 모든 외부 컷 첫 프레임의 레퍼런스",
+      "prompt_template": "wide exterior establishing view of {subject}, full structure visible"
+    },
+    {
+      "role": "INTERIOR",
+      "description": "내부 — 내부 진입·인테리어 컷의 레퍼런스",
+      "prompt_template": "interior view of {subject}, seen from inside the main space"
+    },
+    {
+      "role": "CROSS_SECTION",
+      "description": "단면도 — 구조 설명 컷의 레퍼런스",
+      "prompt_template": "architectural cross-section of {subject}, revealing internal layers"
+    },
+    {
+      "role": "CUTAWAY",
+      "description": "구조 컷어웨이 — 리빌 컷의 레퍼런스",
+      "prompt_template": "structural cutaway of {subject}, exposing the hidden load-bearing structure"
+    }
+  ],
+  "camera_grammar": [
+    {
+      "id": "slow_push_in",
+      "label": "Slow push-in",
+      "purpose": "훅/궁금증 (오프닝)",
+      "frequency": "high",
+      "motion": {
+        "motion_id": "slow_push_in",
+        "prompt": "The camera slowly pushes in toward the subject, building curiosity."
+      }
+    },
+    {
+      "id": "dolly_tilt",
+      "label": "Dolly + tilt",
+      "purpose": "크기·스케일 강조",
+      "frequency": "high",
+      "motion": {
+        "motion_id": "dolly_tilt",
+        "prompt": "The camera dollies forward, then smoothly tilts upward to emphasize the massive scale of the structure."
+      }
+    },
+    {
+      "id": "orbit",
+      "label": "Orbit",
+      "purpose": "구조 설명, 리빌 컷",
+      "frequency": "high",
+      "motion": {
+        "motion_id": "orbit",
+        "prompt": "The camera arcs slowly around the subject, revealing the hidden structural connections."
+      }
+    },
+    {
+      "id": "fly_through",
+      "label": "Fly-through",
+      "purpose": "내부 진입",
+      "frequency": "high",
+      "motion": {
+        "motion_id": "fly_through",
+        "prompt": "The camera flies forward, passing smoothly through the structure into the interior space."
+      }
+    },
+    {
+      "id": "descending_drone",
+      "label": "Descending drone",
+      "purpose": "스케일, \"지하로\" 전환",
+      "frequency": "medium",
+      "motion": {
+        "motion_id": "descending_drone",
+        "prompt": "The camera descends steadily like a drone, sinking toward the lower structure."
+      }
+    },
+    {
+      "id": "macro_pull_back",
+      "label": "Macro → pull back",
+      "purpose": "정체 공개 (디테일→전체)",
+      "frequency": "medium",
+      "motion": {
+        "motion_id": "macro_pull_back",
+        "prompt": "Starting on a macro detail, the camera pulls back to reveal the full structure."
+      }
+    },
+    {
+      "id": "follow_path",
+      "label": "Follow path",
+      "purpose": "물·하중·힘의 흐름 추적",
+      "frequency": "medium",
+      "motion": {
+        "motion_id": "follow_path",
+        "prompt": "The camera follows the path of the flow along the structure, tracing how the load travels."
+      }
+    }
+  ],
+  "camera_rules": {
+    "max_moves_per_clip": 2,
+    "max_moves_reveal_clip": 3
+  },
+  "narration_sync": [
+    {
+      "keywords": ["지하", "아래", "밑"],
+      "camera_move_ids": ["descending_drone"]
+    },
+    {
+      "keywords": ["버틴", "버티", "분산", "흐른", "흐름", "전달"],
+      "camera_move_ids": ["follow_path"]
+    },
+    {
+      "keywords": ["거대", "크기", "높이", "규모"],
+      "camera_move_ids": ["dolly_tilt", "descending_drone"]
+    }
+  ],
+  "voice_config": {
+    "locked": true,
+    "profile": "다큐멘터리/미스터리 톤의 깊고 웅장한 남성 보이스",
+    "vendor_priority": ["elevenlabs", "typecast"],
+    "note": "보이스 톤이 장르 분위기의 80% — 채널 전체에서 절대 바꾸지 않는다 (한국어 억양 이슈 시 Typecast)"
+  },
+  "pilot_template": [
+    {
+      "idx": 0,
+      "duration_ms": 3000,
+      "shot_type": "Wide establishing",
+      "gen_method": "I2V",
+      "camera_move_ids": ["slow_push_in"],
+      "reveal": false,
+      "narration_slot": "훅 문장"
+    },
+    {
+      "idx": 1,
+      "duration_ms": 2000,
+      "shot_type": "Detail",
+      "gen_method": "I2V",
+      "camera_move_ids": ["macro_pull_back"],
+      "reveal": false,
+      "narration_slot": "정체 암시"
+    },
+    {
+      "idx": 2,
+      "duration_ms": 3000,
+      "shot_type": "Fly-through",
+      "gen_method": "I2V",
+      "camera_move_ids": ["fly_through"],
+      "reveal": false,
+      "narration_slot": "정보"
+    },
+    {
+      "idx": 3,
+      "duration_ms": 3000,
+      "shot_type": "Cross-section",
+      "gen_method": "START_END",
+      "camera_move_ids": ["fly_through"],
+      "reveal": false,
+      "narration_slot": "정보 (외부→단면 전환)"
+    },
+    {
+      "idx": 4,
+      "duration_ms": 4000,
+      "shot_type": "Reveal",
+      "gen_method": "I2V",
+      "camera_move_ids": ["orbit"],
+      "reveal": true,
+      "narration_slot": "리빌 + 마무리"
+    }
+  ]
+}
