@@ -1,6 +1,9 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { HiggsfieldClient } from "../higgsfield/client.js";
+import { loadThemePreset } from "../../theme/index.js";
+import { HiggsfieldClient, type HiggsfieldDopTier } from "../higgsfield/client.js";
 import {
   HiggsfieldVideoAdapter,
   msToDurationSec,
@@ -11,13 +14,36 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
 }
 
-function makeAdapter() {
+function makeAdapter(options: { tier?: HiggsfieldDopTier } = {}) {
   const submissions: Array<{ url: string; payload: Record<string, unknown> }> =
     [];
+  const uploads: Array<{ url: string; headers: Record<string, string> }> = [];
+  let uploadCount = 0;
   const fetchFn = (async (url: unknown, init?: RequestInit) => {
+    const urlStr = String(url);
+    if (init?.method === "PUT") {
+      uploads.push({
+        url: urlStr,
+        headers: (init.headers ?? {}) as Record<string, string>,
+      });
+      return new Response(null, { status: 200 });
+    }
     if (init?.method === "POST") {
+      if (urlStr.includes("/files/generate-upload-url")) {
+        uploadCount += 1;
+        // 실측 형상 (2026-08-21): public_url/upload_url/upload_headers
+        return jsonResponse({
+          public_url: `https://cdn/inputs/upload-${uploadCount}.png`,
+          upload_url: `https://s3/presigned-${uploadCount}`,
+          content_type: "image/png",
+          upload_headers: {
+            "Content-Type": "image/png",
+            "x-amz-tagging": "retention=temporary",
+          },
+        });
+      }
       submissions.push({
-        url: String(url),
+        url: urlStr,
         payload: JSON.parse(String(init.body)) as Record<string, unknown>,
       });
       return jsonResponse({ id: `req-${submissions.length}` });
@@ -33,8 +59,19 @@ function makeAdapter() {
     client,
     outputDir: path.join("workspace", "ep1", "clips"),
     downloadFn: async () => {},
+    tier: options.tier,
   });
-  return { adapter, submissions };
+  return { adapter, submissions, uploads };
+}
+
+/** 업로드 테스트용 실존 로컬 파일 2개 (readFile 이 실제로 읽는다) */
+async function makeLocalFrames(): Promise<{ start: string; end: string }> {
+  const dir = await mkdtemp(path.join(tmpdir(), "hf-video-test-"));
+  const start = path.join(dir, "exterior.png");
+  const end = path.join(dir, "interior.png");
+  await writeFile(start, "png-start");
+  await writeFile(end, "png-end");
+  return { start, end };
 }
 
 describe("resolveMotionId", () => {
@@ -65,6 +102,29 @@ describe("resolveMotionId", () => {
 
   it("매칭 없으면 undefined", () => {
     expect(resolveMotionId("static shot")).toBeUndefined();
+  });
+
+  it("프리셋 camera_grammar 7종의 실제 영문 구문이 전부 매핑에 도달한다", () => {
+    // wired 경로의 motion_prompt 는 buildMotionPrompt 가 이 구문들을 이어 붙인다
+    const preset = loadThemePreset("mysterious-architecture");
+    for (const move of preset.camera_grammar) {
+      expect(resolveMotionId(move.motion.prompt), move.id).toBe(
+        move.motion.motion_id,
+      );
+    }
+  });
+
+  it("여러 구문 연결 시 프롬프트에서 먼저 등장한 동작이 주 동작이다", () => {
+    const preset = loadThemePreset("mysterious-architecture");
+    const macro = preset.camera_grammar.find((m) => m.id === "macro_pull_back")!;
+    const orbit = preset.camera_grammar.find((m) => m.id === "orbit")!;
+    const combined = [
+      macro.motion.prompt,
+      orbit.motion.prompt,
+      "Continuous seamless documentary shot.",
+    ].join("\n\n");
+    // 배열 순서(orbit ③ < macro ⑥)가 아니라 등장 위치가 기준이다
+    expect(resolveMotionId(combined)).toBe(macro.motion.motion_id);
   });
 });
 
@@ -105,20 +165,66 @@ describe("HiggsfieldVideoAdapter.i2v", () => {
 });
 
 describe("HiggsfieldVideoAdapter.startEnd", () => {
-  it("start_image/end_image role 2건을 제출한다 (frames 방식)", async () => {
+  it("신 표면 first-last-frame 에 prompt/image_url/end_image_url/motions 를 제출한다", async () => {
     const { adapter, submissions } = makeAdapter();
     await adapter.startEnd({
-      startFramePath: "frames/exterior.png",
-      endFramePath: "frames/interior.png",
+      startFramePath: "https://cdn/frames/exterior.png",
+      endFramePath: "https://cdn/frames/interior.png",
       motionPrompt: "fly-through the entrance",
       duration_ms: 3000,
     });
-    expect(submissions[0].payload.medias).toEqual([
-      { role: "start_image", url: "frames/exterior.png" },
-      { role: "end_image", url: "frames/interior.png" },
-    ]);
-    expect(submissions[0].payload.motion_id).toBe(
-      "7673d9e0-208c-4cf8-8b72-fce5b0e92ecb", // FPV Drone
+    expect(submissions[0].url).toContain(
+      "/higgsfield-ai/dop/lite/first-last-frame", // 기본 티어 lite
+    );
+    expect(submissions[0].payload).toEqual({
+      prompt: "fly-through the entrance",
+      image_url: "https://cdn/frames/exterior.png",
+      end_image_url: "https://cdn/frames/interior.png",
+      motions: [
+        { id: "7673d9e0-208c-4cf8-8b72-fce5b0e92ecb", strength: 0.5 }, // FPV Drone
+      ],
+    });
+  });
+
+  it("로컬 프레임 경로는 프리사인 업로드를 거쳐 public_url 로 제출된다", async () => {
+    const { adapter, submissions, uploads } = makeAdapter();
+    const { start, end } = await makeLocalFrames();
+    await adapter.startEnd({
+      startFramePath: start,
+      endFramePath: end,
+      motionPrompt: "orbit around the dome",
+      duration_ms: 3000,
+    });
+    // 업로드 PUT 은 발급받은 upload_headers 를 그대로 쓴다 (x-amz-tagging 서명 포함)
+    expect(uploads).toHaveLength(2);
+    expect(uploads[0].headers["x-amz-tagging"]).toBe("retention=temporary");
+    const payload = submissions[0].payload;
+    expect(String(payload.image_url)).toMatch(/^https:\/\/cdn\/inputs\//);
+    expect(String(payload.end_image_url)).toMatch(/^https:\/\/cdn\/inputs\//);
+    expect(payload.image_url).not.toBe(payload.end_image_url);
+  });
+
+  it("매핑 안 되는 motion 프롬프트면 motions 를 생략한다", async () => {
+    const { adapter, submissions } = makeAdapter();
+    await adapter.startEnd({
+      startFramePath: "https://cdn/a.png",
+      endFramePath: "https://cdn/b.png",
+      motionPrompt: "gentle ambient movement",
+      duration_ms: 3000,
+    });
+    expect(submissions[0].payload).not.toHaveProperty("motions");
+  });
+
+  it("tier 옵션이 엔드포인트 티어를 바꾼다", async () => {
+    const { adapter, submissions } = makeAdapter({ tier: "turbo" });
+    await adapter.startEnd({
+      startFramePath: "https://cdn/a.png",
+      endFramePath: "https://cdn/b.png",
+      motionPrompt: "fly-through the entrance",
+      duration_ms: 3000,
+    });
+    expect(submissions[0].url).toContain(
+      "/higgsfield-ai/dop/turbo/first-last-frame",
     );
   });
 });

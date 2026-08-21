@@ -33,7 +33,7 @@
 - 개발: `npm run dev` (server+web concurrently) / 프로덕션: `npm run start`
 - 4축 검증: `npm run test`(vitest) / `npm run lint`(eslint) / `npm run typecheck`(워크스페이스별 tsc --noEmit) / `npm run build`(typecheck + web vite build)
 - e2e: `npm run test:e2e`(Playwright — web 빌드+서버 부트 포함, 브라우저는 `npx playwright install chromium` 선행 1회)
-- Higgsfield 시작/끝 프레임 스모크: `npx tsx server/scripts/higgsfield-frames-smoke.ts --start <URL> --end <URL>`
+- Higgsfield 시작/끝 프레임 스모크: `npx tsx server/scripts/higgsfield-frames-smoke.ts --start <URL|로컬 경로> --end <URL|로컬 경로>` (로컬 경로는 프리사인 업로드 경유)
 
 ## 컨벤션
 - 설정 루트 단일화: `eslint.config.js` / `vitest.config.ts` / `tsconfig.base.json`(각 워크스페이스 tsconfig가 extends)

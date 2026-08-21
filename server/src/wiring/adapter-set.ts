@@ -17,7 +17,10 @@ import type {
   TTSVendor,
   VideoAdapter,
 } from "@shortsrator/shared";
-import { HiggsfieldClient } from "../adapters/higgsfield/client.js";
+import {
+  HiggsfieldClient,
+  type HiggsfieldDopTier,
+} from "../adapters/higgsfield/client.js";
 import { HiggsfieldImageAdapter } from "../adapters/image/higgsfield-image-adapter.js";
 import { HiggsfieldVideoAdapter } from "../adapters/video/higgsfield-video-adapter.js";
 import { ClaudeLLMAdapter } from "../adapters/llm/index.js";
@@ -43,6 +46,19 @@ export interface ManualDropTarget {
 
 const ADAPTER_MODE_KEY = (kind: string) => `adapter_mode.${kind}`;
 const TTS_VENDOR_KEY = "tts_vendor";
+const HIGGSFIELD_TIER_KEY = "higgsfield_tier";
+
+/**
+ * 설정 티어(lite/standard/high, routes/settings.ts) → dop 벤더 티어.
+ * 벤더 명명과 품질·비용 순서가 어긋난다 — /estimate 실측(2026-08-21, 클립당)
+ * lite 2.0cr < turbo 6.5cr < standard 9.0cr 이므로 품질 오름차순 매핑은
+ * lite→lite, standard(표준)→turbo, high(고품질)→standard 다.
+ */
+const DOP_TIER_BY_SETTING: Record<string, HiggsfieldDopTier> = {
+  lite: "lite",
+  standard: "turbo",
+  high: "standard",
+};
 
 const NO_API_VIDEO_MESSAGE =
   "video 어댑터가 MANUAL 모드다 — API 경로 없음(start_end 강등 체인이 manual 로 내려간다)";
@@ -142,12 +158,22 @@ export class AdapterSet {
     };
   }
 
+  /** 설정 higgsfield_tier → dop 벤더 티어 — 기본은 설정 기본값 standard(표준)와 동일 */
+  private dopTier(): HiggsfieldDopTier {
+    const stored = this.dao.settings.get(HIGGSFIELD_TIER_KEY) ?? "standard";
+    return DOP_TIER_BY_SETTING[stored] ?? DOP_TIER_BY_SETTING.standard;
+  }
+
   video(outputDir: string): NamedAdapter<VideoAdapter> {
     if (this.mode("video") === "manual") {
       return { adapter: this.manual.video, name: "manual" };
     }
     return {
-      adapter: new HiggsfieldVideoAdapter({ client: this.client(), outputDir }),
+      adapter: new HiggsfieldVideoAdapter({
+        client: this.client(),
+        outputDir,
+        tier: this.dopTier(),
+      }),
       name: "higgsfield",
     };
   }

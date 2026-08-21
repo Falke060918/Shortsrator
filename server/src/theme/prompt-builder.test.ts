@@ -95,7 +95,10 @@ describe("모션 프롬프트 (VIDEO_GEN)", () => {
 
 describe("motion_id 매핑", () => {
   it("카메라 문법 id를 I2V 어댑터 motion_id로 변환한다", () => {
-    expect(motionIdFor(preset, "orbit")).toBe("orbit");
+    // 실값 UUID — GET /v1/motions 실측 "360 Orbit" (2026-08-21 frames 스모크)
+    expect(motionIdFor(preset, "orbit")).toBe(
+      "ea035f68-b350-40f1-b7f4-7dff999fdd67",
+    );
     expect(() => motionIdFor(preset, "nope")).toThrow(ThemePresetError);
   });
 });
