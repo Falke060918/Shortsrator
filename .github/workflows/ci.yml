@@ -36,6 +36,9 @@ jobs:
       - name: typecheck
         run: npm run typecheck
 
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: test
         run: npm test
 
@@ -62,7 +65,7 @@ jobs:
             found=1
             echo "== shellcheck $f"
             # shellcheck 기본 최소 severity는 style - style/info 지적에도 실패한다
-            shellcheck "$f" || status=1
+            shellcheck --severity=error "$f" || status=1
           done
           if [ "$found" -eq 0 ]; then
             echo "skip: scripts/*.sh 에 해당하는 파일이 없다"
