@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <!-- Pretendard (Hangul, variable + dynamic subset) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <!-- Geist / Geist Mono (Latin, numerals, code) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shortsrator — 숏츠 반자동 제작 파이프라인</title>
+  <style>
+    /* ── 토큰 ─────────────────────────────────────────── */
+    :root {
+      --font-sans: Geist, Pretendard, sans-serif;
+      --font-mono: "Geist Mono", D2Coding, monospace;
+
+      --bg: #0e1216;
+      --surface: #161c23;
+      --surface-2: #1c242d;
+      --line: #28313c;
+      --line-soft: #202932;
+      --text: #e9eef3;
+      --muted: #909dab;
+      --faint: #5c6875;
+
+      --gold: #e3b34c;          /* 오쿨루스 광 — 사람이 개입하는 게이트의 색 */
+      --gold-dim: rgba(227, 179, 76, 0.14);
+      --ok: #55b87e;
+      --ok-dim: rgba(85, 184, 126, 0.13);
+      --locked: #5a6673;
+      --info: #6b96d6;
+      --info-dim: rgba(107, 150, 214, 0.13);
+      --danger: #d0704f;
+
+      --r: 10px;
+      --r-sm: 6px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { background: var(--bg); }
+    body {
+      font-family: var(--font-sans);
+      background:
+        radial-gradient(1100px 420px at 50% -180px, rgba(227, 179, 76, 0.07), transparent 65%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    code, pre, kbd, samp, .mono { font-family: var(--font-mono); }
+
+    a { color: inherit; }
+    button { font-family: inherit; cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
+
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── 헤더 ─────────────────────────────────────────── */
+    header.app {
+      display: flex; align-items: center; gap: 14px;
+      padding: 20px 0 16px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .logo {
+      display: flex; align-items: baseline; gap: 8px;
+      font-weight: 700; font-size: 17px; letter-spacing: -0.02em;
+    }
+    .logo .oculus {
+      width: 11px; height: 11px; border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, #f4d68a, var(--gold) 60%, #8f6c22);
+      box-shadow: 0 0 12px rgba(227, 179, 76, 0.55);
+      align-self: center;
+    }
+    .logo small { font-weight: 400; color: var(--faint); font-size: 12px; letter-spacing: 0; }
+    .header-badges { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; padding: 4px 10px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--muted); background: var(--surface);
+    }
+    .badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .badge.channel .dot { background: var(--danger); }
+    .badge.theme { border-color: rgba(227, 179, 76, 0.35); color: var(--gold); background: var(--gold-dim); }
+    .badge.theme .dot { background: var(--gold); }
+    .badge.local .dot { background: var(--ok); }
+
+    /* ── 탭 내비게이션 ────────────────────────────────── */
+    nav.tabs {
+      display: flex; gap: 4px; margin: 18px 0 26px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    nav.tabs button {
+      background: none; border: none; color: var(--muted);
+      font-size: 13.5px; padding: 10px 14px 12px;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color 0.15s;
+    }
+    nav.tabs button:hover { color: var(--text); }
+    nav.tabs button[aria-selected="true"] {
+      color: var(--text); border-bottom-color: var(--gold); font-weight: 600;
+    }
+    nav.tabs .tab-num { font-family: var(--font-mono); font-size: 11px; color: var(--faint); margin-right: 6px; }
+    nav.tabs button[aria-selected="true"] .tab-num { color: var(--gold); }
+
+    .screen { display: none; }
+    .screen.active { display: block; animation: rise 0.28s ease; }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      .screen.active { animation: none; }
+      * { transition: none !important; }
+    }
+
+    /* ── 공통 요소 ────────────────────────────────────── */
+    .eyebrow {
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--faint); font-weight: 600; margin-bottom: 6px;
+      font-family: var(--font-mono);
+    }
+    h1.screen-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .screen-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 24px; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--r);
+    }
+
+    .status-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+      white-space: nowrap;
+    }
+    .status-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .chip-ok    { color: var(--ok); background: var(--ok-dim); }
+    .chip-wait  { color: var(--gold); background: var(--gold-dim); }
+    .chip-run   { color: var(--info); background: var(--info-dim); }
+    .chip-locked{ color: var(--locked); background: rgba(90, 102, 115, 0.14); }
+    .chip-queue { color: var(--muted); background: rgba(144, 157, 171, 0.1); }
+
+    .gate-diamond {
+      display: inline-block; width: 9px; height: 9px;
+      transform: rotate(45deg); border-radius: 2px;
+      border: 1.5px solid var(--gold); background: transparent;
+      flex: none;
+    }
+    .gate-diamond.passed { background: var(--gold); box-shadow: 0 0 8px rgba(227, 179, 76, 0.5); }
+    .gate-diamond.locked { border-color: var(--locked); opacity: 0.55; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
+      padding: 8px 14px; border: 1px solid var(--line);
+      background: var(--surface-2); color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn:hover { border-color: var(--faint); }
+    .btn-gold { background: var(--gold); border-color: var(--gold); color: #17130a; }
+    .btn-gold:hover { background: #ecc063; border-color: #ecc063; }
+    .btn-ghost { background: transparent; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+    /* ══ 화면 1 — 에피소드 대시보드 ═══════════════════ */
+    .dash-top { display: grid; grid-template-columns: 1fr 300px; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 860px) { .dash-top { grid-template-columns: 1fr; } }
+
+    .ep-card { padding: 20px; }
+    .ep-card.featured {
+      border-color: rgba(227, 179, 76, 0.3);
+      background: linear-gradient(140deg, rgba(227, 179, 76, 0.05), transparent 45%), var(--surface);
+    }
+    .ep-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .ep-title { font-size: 16.5px; font-weight: 700; letter-spacing: -0.01em; }
+    .ep-meta { color: var(--faint); font-size: 12px; margin-top: 3px; }
+    .ep-meta .mono { font-size: 11.5px; }
+    .ep-head .status-chip { margin-left: auto; }
+
+    /* 미니 파이프라인 스테퍼 (대시보드용) */
+    .mini-pipe { display: flex; align-items: center; gap: 0; margin: 16px 0 6px; }
+    .mini-stage { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; position: relative; }
+    .mini-stage .bar { height: 4px; width: 100%; border-radius: 2px; background: var(--line); }
+    .mini-stage.done .bar { background: var(--ok); }
+    .mini-stage.now .bar { background: var(--gold); }
+    .mini-stage .lbl { font-size: 11px; color: var(--faint); }
+    .mini-stage.done .lbl { color: var(--muted); }
+    .mini-stage.now .lbl { color: var(--gold); font-weight: 600; }
+    .mini-pipe .mini-gap { width: 5px; }
+
+    .ep-foot { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+    .ep-foot .note { color: var(--muted); font-size: 12.5px; }
+    .ep-foot .btn { margin-left: auto; }
+
+    .side-stack { display: flex; flex-direction: column; gap: 16px; }
+    .stat-card { padding: 16px 18px; }
+    .stat-card h3 { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+    .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--line-soft); }
+    .stat-row:first-of-type { border-top: none; }
+    .stat-row .k { color: var(--muted); font-size: 12.5px; }
+    .stat-row .v { font-family: var(--font-mono); font-size: 13px; }
+    .stat-row .v .goal { color: var(--faint); font-size: 11px; }
+    .v-ok { color: var(--ok); }
+    .v-warn { color: var(--gold); }
+
+    .queue-card { padding: 16px 18px; }
+    .queue-card h3 { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+    .queue-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-top: 1px solid var(--line-soft);
+    }
+    .queue-item:first-of-type { border-top: none; margin-top: 8px; }
+    .queue-item .q-num { font-family: var(--font-mono); font-size: 11px; color: var(--faint); width: 22px; flex: none; }
+    .queue-item .q-title { font-size: 13px; }
+    .queue-item .q-type { margin-left: auto; font-size: 11px; color: var(--faint); white-space: nowrap; }
+
+    .done-list { margin-top: 16px; }
+    .done-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 18px; border-top: 1px solid var(--line-soft);
+    }
+    .done-row:first-child { border-top: none; }
+    .done-row .d-title { font-size: 13.5px; font-weight: 600; }
+    .done-row .d-meta { color: var(--faint); font-size: 12px; font-family: var(--font-mono); }
+    .done-row .status-chip { margin-left: auto; }
+    .list-head { padding: 14px 18px 0; }
+    .list-head h3 { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+    /* ══ 화면 2 — 파이프라인 진행 ═════════════════════ */
+    .pipe-layout { display: grid; grid-template-columns: 1fr 236px; gap: 20px; align-items: start; }
+    @media (max-width: 940px) { .pipe-layout { grid-template-columns: 1fr; } }
+
+    /* 메인 스테퍼: 단계 5 + 게이트 4 인터리브 */
+    .stepper { display: flex; align-items: stretch; padding: 22px 20px 18px; overflow-x: auto; }
+    .stage-node { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 86px; flex: 1; }
+    .stage-dot {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+      border: 1.5px solid var(--line); color: var(--faint); background: var(--surface-2);
+    }
+    .stage-node.done .stage-dot { border-color: var(--ok); color: var(--ok); background: var(--ok-dim); }
+    .stage-node.now .stage-dot { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); box-shadow: 0 0 14px rgba(227, 179, 76, 0.25); }
+    .stage-name { font-size: 12.5px; font-weight: 600; color: var(--faint); white-space: nowrap; }
+    .stage-node.done .stage-name { color: var(--text); }
+    .stage-node.now .stage-name { color: var(--gold); }
+    .stage-sub { font-size: 11px; color: var(--faint); white-space: nowrap; }
+
+    .gate-node { display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 74px; padding-top: 8px; }
+    .gate-track { display: flex; align-items: center; width: 100%; }
+    .gate-track .line { height: 1.5px; flex: 1; background: var(--line); }
+    .gate-track .line.done { background: var(--ok); }
+    .gate-track .gate-diamond { margin: 0 6px; width: 12px; height: 12px; }
+    .gate-lbl { font-size: 10.5px; font-family: var(--font-mono); color: var(--faint); letter-spacing: 0.04em; white-space: nowrap; }
+    .gate-state { font-size: 10.5px; white-space: nowrap; font-weight: 600; }
+    .gate-state.passed { color: var(--ok); }
+    .gate-state.waiting { color: var(--gold); }
+    .gate-state.locked { color: var(--locked); }
+
+    /* 컷 테이블 */
+    .cut-table-card { margin-top: 20px; overflow: hidden; }
+    .cut-table-head {
+      display: flex; align-items: baseline; gap: 10px;
+      padding: 16px 18px 12px; border-bottom: 1px solid var(--line);
+    }
+    .cut-table-head h3 { font-size: 13.5px; font-weight: 700; }
+    .cut-table-head .sum { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+    .cut-table-head .sum strong { color: var(--text); font-weight: 600; }
+
+    table.cuts { width: 100%; border-collapse: collapse; }
+    table.cuts th {
+      text-align: left; font-size: 11px; color: var(--faint); font-weight: 600;
+      letter-spacing: 0.06em; padding: 10px 14px; border-bottom: 1px solid var(--line-soft);
+      font-family: var(--font-mono);
+    }
+    table.cuts td { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+    table.cuts tr:last-child td { border-bottom: none; }
+    table.cuts tr:hover td { background: rgba(255, 255, 255, 0.015); }
+
+    .cut-no { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .cut-line { font-size: 13px; max-width: 320px; }
+    .cut-cam { display: block; font-size: 11px; color: var(--faint); margin-top: 3px; font-family: var(--font-mono); }
+    .tts-len { font-family: var(--font-mono); font-size: 13px; white-space: nowrap; }
+    .tts-len .unit { color: var(--faint); font-size: 11px; }
+
+    .thumb {
+      width: 44px; height: 78px; border-radius: 5px; border: 1px solid var(--line);
+      background: var(--surface-2); position: relative; overflow: hidden; flex: none;
+    }
+    .thumb::after {
+      content: "9:16"; position: absolute; inset: auto 0 3px 0; text-align: center;
+      font-family: var(--font-mono); font-size: 8px; color: rgba(255, 255, 255, 0.45);
+    }
+    .thumb.empty { display: flex; align-items: center; justify-content: center; }
+    .thumb.empty::after { content: none; }
+    .thumb.empty span { color: var(--faint); font-size: 15px; line-height: 1; }
+
+    /* 건축 그라디언트 placeholder 세트 */
+    .g-pantheon-ext { background: linear-gradient(168deg, #2c3a4a 0%, #22303e 38%, #3d3526 72%, #191d22 100%); }
+    .g-pantheon-int { background: radial-gradient(90% 55% at 50% 12%, rgba(236, 192, 99, 0.75), rgba(120, 96, 48, 0.25) 42%, transparent 65%), linear-gradient(180deg, #232c36, #15191e); }
+    .g-cross { background: repeating-linear-gradient(90deg, #2a3542 0 7px, #232c37 7px 14px), linear-gradient(180deg, #2a3542, #1a212a); background-blend-mode: overlay; }
+    .g-cutaway { background: conic-gradient(from 210deg at 60% 35%, #35424f, #232c36 32%, #4a3f28 55%, #1a2027 78%, #35424f); }
+    .g-oculus { background: radial-gradient(45% 30% at 50% 22%, #ecc063, rgba(227, 179, 76, 0.2) 55%, transparent 70%), linear-gradient(180deg, #1f2731, #12161b); }
+
+    .clip-cell { display: flex; align-items: center; }
+
+    .table-notice {
+      display: flex; align-items: center; gap: 9px;
+      padding: 12px 18px; background: var(--gold-dim);
+      border-top: 1px solid rgba(227, 179, 76, 0.25);
+      font-size: 12.5px; color: var(--gold);
+    }
+    .table-notice .btn { margin-left: auto; }
+
+    /* 9:16 미리보기 패널 */
+    .preview-card { padding: 16px; position: sticky; top: 16px; }
+    .preview-card h3 { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+    .phone {
+      aspect-ratio: 9 / 16; width: 100%; border-radius: 14px;
+      border: 1px solid var(--line); overflow: hidden; position: relative;
+      background: radial-gradient(70% 42% at 50% 16%, rgba(236, 192, 99, 0.5), rgba(120, 96, 48, 0.14) 48%, transparent 68%), linear-gradient(180deg, #232d38, #101419);
+    }
+    .phone .ph-label {
+      position: absolute; top: 10px; left: 10px;
+      font-family: var(--font-mono); font-size: 10px; color: rgba(255, 255, 255, 0.55);
+      background: rgba(0, 0, 0, 0.35); padding: 2px 7px; border-radius: 4px;
+    }
+    .phone .ph-sub {
+      position: absolute; bottom: 34px; left: 12px; right: 12px; text-align: center;
+      font-size: 12.5px; font-weight: 700; color: #f4d68a;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7); line-height: 1.4;
+    }
+    .phone .ph-progress { position: absolute; bottom: 12px; left: 12px; right: 12px; display: flex; gap: 3px; }
+    .phone .ph-progress i { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.28); }
+    .phone .ph-progress i.on { background: var(--gold); }
+
+    .cut-timeline { margin-top: 14px; }
+    .cut-timeline .tl-bar { display: flex; gap: 2px; height: 10px; border-radius: 3px; overflow: hidden; }
+    .cut-timeline .tl-bar i { display: block; }
+    .tl-c1 { background: var(--ok); }
+    .tl-c2 { background: var(--ok); }
+    .tl-c3 { background: var(--gold); }
+    .tl-c4 { background: var(--line); }
+    .tl-c5 { background: var(--line); }
+    .cut-timeline .tl-legend { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--faint); margin-top: 5px; }
+    .preview-note { margin-top: 12px; font-size: 11.5px; color: var(--faint); line-height: 1.5; }
+
+    /* ══ 화면 3 — 컨펌 게이트 (첫 프레임) ════════════ */
+    .gate-head-card {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 20px; margin-bottom: 20px;
+      border-color: rgba(227, 179, 76, 0.3);
+      background: linear-gradient(120deg, rgba(227, 179, 76, 0.07), transparent 55%), var(--surface);
+    }
+    .gate-head-card .gate-diamond { width: 14px; height: 14px; }
+    .gate-head-card .gh-txt b { font-size: 14px; }
+    .gate-head-card .gh-txt div { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+    .gate-head-card .gh-count { margin-left: auto; text-align: right; }
+    .gate-head-card .gh-count .n { font-family: var(--font-mono); font-size: 18px; font-weight: 600; color: var(--gold); }
+    .gate-head-card .gh-count .lbl { font-size: 11px; color: var(--faint); }
+
+    .gate-cut-info {
+      display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .gate-cut-info .ci-title { font-size: 15px; font-weight: 700; }
+    .gate-cut-info .ci-line { color: var(--muted); font-size: 13px; }
+    .gate-cut-info .ci-len { font-family: var(--font-mono); font-size: 12px; color: var(--faint); margin-left: auto; }
+
+    .cand-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 940px) { .cand-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px) { .cand-grid { grid-template-columns: 1fr; } }
+
+    .cand { overflow: hidden; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+    .cand:hover { transform: translateY(-2px); border-color: var(--faint); }
+    .cand .cand-img { aspect-ratio: 9 / 16; position: relative; }
+    .cand .cand-tag {
+      position: absolute; top: 8px; left: 8px;
+      font-family: var(--font-mono); font-size: 10px;
+      background: rgba(0, 0, 0, 0.45); color: rgba(255, 255, 255, 0.75);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    .cand .cand-pick {
+      position: absolute; top: 8px; right: 8px; width: 20px; height: 20px;
+      border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.55);
+      background: rgba(0, 0, 0, 0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: transparent;
+    }
+    .cand.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 6px 22px rgba(227, 179, 76, 0.16); }
+    .cand.selected .cand-pick { background: var(--gold); border-color: var(--gold); color: #17130a; font-weight: 700; }
+    .cand .cand-meta { padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+    .cand .cand-meta .cm-name { font-size: 12px; font-weight: 600; }
+    .cand .cand-meta .cm-seed { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--faint); }
+
+    .style-lock {
+      margin-top: 18px; padding: 12px 16px;
+      font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+      background: var(--surface-2); border: 1px dashed var(--line);
+      border-radius: var(--r-sm); line-height: 1.7;
+    }
+    .style-lock b { color: var(--faint); font-weight: 600; letter-spacing: 0.06em; }
+
+    .gate-actions {
+      display: flex; align-items: center; gap: 10px; margin-top: 18px;
+      padding: 16px 18px; flex-wrap: wrap;
+    }
+    .gate-actions .picked-info { font-size: 13px; color: var(--muted); }
+    .gate-actions .picked-info strong { color: var(--gold); }
+    .gate-actions .spacer { flex: 1; }
+    .lock-note {
+      display: flex; align-items: center; gap: 8px; margin-top: 14px;
+      font-size: 12.5px; color: var(--locked);
+    }
+    .lock-note .gate-diamond { width: 9px; height: 9px; }
+
+    footer.app-foot {
+      margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line-soft);
+      color: var(--faint); font-size: 11.5px; display: flex; gap: 14px; flex-wrap: wrap;
+    }
+    footer.app-foot .mono { font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="app">
+      <div class="logo">
+        <span class="oculus" aria-hidden="true"></span>
+        Shortsrator <small>숏츠 반자동 제작 파이프라인</small>
+      </div>
+      <div class="header-badges">
+        <span class="badge channel"><span class="dot"></span>채널 · 신비한건축사전</span>
+        <span class="badge theme"><span class="dot"></span>테마 · 신비한 건축 v1 (DRAFT)</span>
+        <span class="badge local"><span class="dot"></span>로컬 실행 중</span>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="화면 전환">
+      <button role="tab" aria-selected="true" data-screen="dashboard"><span class="tab-num">01</span>에피소드 대시보드</button>
+      <button role="tab" aria-selected="false" data-screen="pipeline"><span class="tab-num">02</span>파이프라인 진행</button>
+      <button role="tab" aria-selected="false" data-screen="gate"><span class="tab-num">03</span>컨펌 게이트 · 첫 프레임</button>
+    </nav>
+
+    <!-- ══════════════ 화면 1 · 에피소드 대시보드 ══════════════ -->
+    <section class="screen active" id="screen-dashboard" role="tabpanel">
+      <p class="eyebrow">EPISODES</p>
+      <h1 class="screen-title">에피소드 대시보드</h1>
+      <p class="screen-sub">진행 중인 에피소드와 대기 주제 큐. 게이트에서 멈춘 에피소드가 가장 먼저 보입니다.</p>
+
+      <div class="dash-top">
+        <div>
+          <article class="card ep-card featured">
+            <div class="ep-head">
+              <div>
+                <div class="ep-title">판테온 돔은 왜 무너지지 않는가</div>
+                <div class="ep-meta">에피소드 <span class="mono">EP-003</span> · 15초 · 5컷 · 시작 2026-08-20</div>
+              </div>
+              <span class="status-chip chip-wait">게이트 2 대기 — 첫 프레임 컨펌</span>
+            </div>
+
+            <div class="mini-pipe" aria-label="파이프라인 진행 상태">
+              <div class="mini-stage done"><div class="bar"></div><span class="lbl">대본</span></div>
+              <span class="mini-gap"></span>
+              <div class="mini-stage done"><div class="bar"></div><span class="lbl">TTS</span></div>
+              <span class="mini-gap"></span>
+              <div class="mini-stage now"><div class="bar"></div><span class="lbl">첫 프레임</span></div>
+              <span class="mini-gap"></span>
+              <div class="mini-stage"><div class="bar"></div><span class="lbl">클립</span></div>
+              <span class="mini-gap"></span>
+              <div class="mini-stage"><div class="bar"></div><span class="lbl">조립</span></div>
+            </div>
+
+            <div class="ep-foot">
+              <span class="gate-diamond" aria-hidden="true"></span>
+              <span class="note">컷 1의 후보 프레임 4장이 생성됨 — 선별을 기다리는 중</span>
+              <button class="btn btn-gold" data-goto="pipeline">진행 화면 열기</button>
+            </div>
+          </article>
+
+          <article class="card done-list">
+            <div class="list-head"><h3>지난 에피소드</h3></div>
+            <div class="done-row">
+              <div>
+                <div class="d-title">아무도 이 다리의 아래를 본 적이 없습니다</div>
+                <div class="d-meta">EP-002 · 15s · 최종 mp4 · 2026-08-14</div>
+              </div>
+              <span class="status-chip chip-ok">완주</span>
+            </div>
+            <div class="done-row">
+              <div>
+                <div class="d-title">비밀은 지하 20미터에 있었습니다</div>
+                <div class="d-meta">EP-001 · 15s · 최종 mp4 · 2026-08-07</div>
+              </div>
+              <span class="status-chip chip-ok">완주</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="side-stack">
+          <article class="card stat-card">
+            <h3>테마 품질 지표 (최근 10회 생성)</h3>
+            <div class="stat-row">
+              <span class="k">첫 프레임 승인률</span>
+              <span class="v v-ok">42% <span class="goal">/ 목표 ≥40%</span></span>
+            </div>
+            <div class="stat-row">
+              <span class="k">클립 채택률</span>
+              <span class="v v-warn">28% <span class="goal">/ 목표 ≥30%</span></span>
+            </div>
+            <div class="stat-row">
+              <span class="k">편당 개입 시간</span>
+              <span class="v">47<span class="goal">min / 목표 ≤60</span></span>
+            </div>
+          </article>
+
+          <article class="card queue-card">
+            <h3>대기 주제 큐 <span class="mono" style="color:var(--faint)">6</span></h3>
+            <div class="queue-item">
+              <span class="q-num">01</span>
+              <span class="q-title">대형 현수교의 하부 지지 구조</span>
+              <span class="q-type">숨겨진 구조</span>
+            </div>
+            <div class="queue-item">
+              <span class="q-num">02</span>
+              <span class="q-title">댐 내부에서 수압이 분산되는 방식</span>
+              <span class="q-type">왜 안 무너지나</span>
+            </div>
+            <div class="queue-item">
+              <span class="q-num">03</span>
+              <span class="q-title">경기장 지붕의 케이블 구조</span>
+              <span class="q-type">숨겨진 구조</span>
+            </div>
+            <div class="queue-item">
+              <span class="q-num">04</span>
+              <span class="q-title">지하 20미터의 고대 저수조</span>
+              <span class="q-type">숨겨진 구조</span>
+            </div>
+            <div class="queue-item">
+              <span class="q-num">05</span>
+              <span class="q-title">초고층 빌딩의 튜닝 매스 댐퍼</span>
+              <span class="q-type">왜 안 무너지나</span>
+            </div>
+            <div class="queue-item">
+              <span class="q-num">06</span>
+              <span class="q-title">심해에 존재하는 미스터리 유적지</span>
+              <span class="q-type">불가능한 건축</span>
+            </div>
+            <div style="margin-top:12px">
+              <button class="btn btn-ghost btn-sm">+ 큐에서 새 에피소드 시작</button>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ 화면 2 · 파이프라인 진행 ══════════════ -->
+    <section class="screen" id="screen-pipeline" role="tabpanel">
+      <p class="eyebrow">EP-003 · PIPELINE</p>
+      <h1 class="screen-title">판테온 돔은 왜 무너지지 않는가</h1>
+      <p class="screen-sub">단계 사이의 <span style="color:var(--gold)">◆ 금색 마름모</span>가 사람이 개입하는 컨펌 게이트입니다. 게이트를 통과해야 다음 단계가 열립니다.</p>
+
+      <div class="card stepper" aria-label="파이프라인 단계와 게이트">
+        <div class="stage-node done">
+          <div class="stage-dot">1</div>
+          <div class="stage-name">대본</div>
+          <div class="stage-sub">5컷 · 완료</div>
+        </div>
+        <div class="gate-node">
+          <div class="gate-track"><span class="line done"></span><span class="gate-diamond passed"></span><span class="line done"></span></div>
+          <div class="gate-lbl">GATE 1 시나리오</div>
+          <div class="gate-state passed">통과 · 08-20</div>
+        </div>
+        <div class="stage-node done">
+          <div class="stage-dot">2</div>
+          <div class="stage-name">TTS</div>
+          <div class="stage-sub">실측 16.2s</div>
+        </div>
+        <div class="gate-node">
+          <div class="gate-track"><span class="line done"></span><span class="gate-diamond"></span><span class="line"></span></div>
+          <div class="gate-lbl">GATE 2 첫 프레임</div>
+          <div class="gate-state waiting">대기 — 1/5컷</div>
+        </div>
+        <div class="stage-node now">
+          <div class="stage-dot">3</div>
+          <div class="stage-name">첫 프레임</div>
+          <div class="stage-sub">후보 생성 중</div>
+        </div>
+        <div class="gate-node">
+          <div class="gate-track"><span class="line"></span><span class="gate-diamond locked"></span><span class="line"></span></div>
+          <div class="gate-lbl">GATE 3 클립 선별</div>
+          <div class="gate-state locked">잠김</div>
+        </div>
+        <div class="stage-node">
+          <div class="stage-dot">4</div>
+          <div class="stage-name">클립 (I2V)</div>
+          <div class="stage-sub">—</div>
+        </div>
+        <div class="gate-node">
+          <div class="gate-track"><span class="line"></span><span class="gate-diamond locked"></span><span class="line"></span></div>
+          <div class="gate-lbl">GATE 4 최종</div>
+          <div class="gate-state locked">잠김</div>
+        </div>
+        <div class="stage-node">
+          <div class="stage-dot">5</div>
+          <div class="stage-name">조립</div>
+          <div class="stage-sub">ffmpeg · 9:16</div>
+        </div>
+      </div>
+
+      <div class="pipe-layout" style="margin-top:20px">
+        <article class="card cut-table-card">
+          <div class="cut-table-head">
+            <h3>컷 구성 — 15초 · 5컷</h3>
+            <span class="sum">TTS 실측 합계 <strong>16.2s</strong> · 컷 길이 = 오디오 실측</span>
+          </div>
+          <table class="cuts">
+            <thead>
+              <tr>
+                <th>컷</th>
+                <th>내레이션 · 카메라</th>
+                <th>TTS 실측</th>
+                <th>첫 프레임</th>
+                <th>클립</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="cut-no">C1<br /><span style="font-size:10px">HOOK</span></td>
+                <td class="cut-line">“이 돔은 2000년째 무너지지 않고 있습니다.”
+                  <span class="cut-cam">① slow push-in · Wide establishing</span>
+                </td>
+                <td class="tts-len">3.1<span class="unit">s</span></td>
+                <td><div class="thumb g-pantheon-ext" role="img" aria-label="판테온 외부 첫 프레임 (더미)"></div></td>
+                <td class="clip-cell"><span class="status-chip chip-wait">프레임 선별 대기</span></td>
+              </tr>
+              <tr>
+                <td class="cut-no">C2</td>
+                <td class="cut-line">“지름 43미터, 철근은 단 하나도 없습니다.”
+                  <span class="cut-cam">⑥ macro → pull back · Detail</span>
+                </td>
+                <td class="tts-len">2.8<span class="unit">s</span></td>
+                <td><div class="thumb g-pantheon-int" role="img" aria-label="판테온 내부 첫 프레임 (더미)"></div></td>
+                <td class="clip-cell"><span class="status-chip chip-run">후보 생성 중 2/3</span></td>
+              </tr>
+              <tr>
+                <td class="cut-no">C3</td>
+                <td class="cut-line">“비밀은 위로 갈수록 가벼워지는 콘크리트에 있습니다.”
+                  <span class="cut-cam">④ fly-through · 내부 진입</span>
+                </td>
+                <td class="tts-len">3.4<span class="unit">s</span></td>
+                <td><div class="thumb empty"><span>·</span></div></td>
+                <td class="clip-cell"><span class="status-chip chip-locked">게이트 2 이후</span></td>
+              </tr>
+              <tr>
+                <td class="cut-no">C4</td>
+                <td class="cut-line">“돔의 무게는 두꺼운 벽을 타고 땅으로 흐릅니다.”
+                  <span class="cut-cam">Start+End · 외부 → 단면</span>
+                </td>
+                <td class="tts-len">3.0<span class="unit">s</span></td>
+                <td><div class="thumb empty"><span>·</span></div></td>
+                <td class="clip-cell"><span class="status-chip chip-locked">게이트 2 이후</span></td>
+              </tr>
+              <tr>
+                <td class="cut-no">C5<br /><span style="font-size:10px">REVEAL</span></td>
+                <td class="cut-line">“정점의 구멍, 오쿨루스가 이 돔을 완성합니다.”
+                  <span class="cut-cam">③ orbit · Reveal</span>
+                </td>
+                <td class="tts-len">3.9<span class="unit">s</span></td>
+                <td><div class="thumb empty"><span>·</span></div></td>
+                <td class="clip-cell"><span class="status-chip chip-locked">게이트 2 이후</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-notice">
+            <span class="gate-diamond" aria-hidden="true"></span>
+            게이트 2 — 컷 1의 첫 프레임 후보 4장이 선별을 기다리고 있습니다.
+            <button class="btn btn-gold btn-sm" data-goto="gate">선별하러 가기</button>
+          </div>
+        </article>
+
+        <aside class="card preview-card">
+          <h3>9:16 미리보기 — C1 승인 대기 프레임</h3>
+          <div class="phone" role="img" aria-label="세로 9:16 숏츠 미리보기 (더미)">
+            <span class="ph-label">1080×1920</span>
+            <div class="ph-sub">이 돔은 2000년째<br />무너지지 않고 있습니다</div>
+            <div class="ph-progress" aria-hidden="true">
+              <i class="on" style="flex:3.1"></i><i style="flex:2.8"></i><i style="flex:3.4"></i><i style="flex:3.0"></i><i style="flex:3.9"></i>
+            </div>
+          </div>
+          <div class="cut-timeline" aria-label="컷 길이 타임라인 (TTS 실측 비례)">
+            <div class="tl-bar">
+              <i class="tl-c1" style="flex:3.1" title="C1 3.1s"></i>
+              <i class="tl-c2" style="flex:2.8" title="C2 2.8s"></i>
+              <i class="tl-c3" style="flex:3.4" title="C3 3.4s"></i>
+              <i class="tl-c4" style="flex:3.0" title="C4 3.0s"></i>
+              <i class="tl-c5" style="flex:3.9" title="C5 3.9s"></i>
+            </div>
+            <div class="tl-legend"><span>0s</span><span>16.2s</span></div>
+          </div>
+          <p class="preview-note">막대 폭은 TTS 실측 길이에 비례합니다. 조립 단계에서 컷 길이는 항상 오디오 실측을 따릅니다.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ══════════════ 화면 3 · 컨펌 게이트 (첫 프레임 선별) ══════════════ -->
+    <section class="screen" id="screen-gate" role="tabpanel">
+      <p class="eyebrow">EP-003 · GATE 2 / 4</p>
+      <h1 class="screen-title">첫 프레임 컨펌 게이트</h1>
+      <p class="screen-sub">컷마다 후보 중 1장을 승인해야 클립(I2V) 단계가 열립니다. 마음에 드는 후보가 없으면 전체 반려 후 재생성합니다.</p>
+
+      <div class="card gate-head-card">
+        <span class="gate-diamond" aria-hidden="true"></span>
+        <div class="gh-txt">
+          <b>게이트 2 — 첫 프레임 선별</b>
+          <div>판테온 돔은 왜 무너지지 않는가 · 마스터 애셋 4장 기준으로 생성됨</div>
+        </div>
+        <div class="gh-count">
+          <div class="n">1 / 5</div>
+          <div class="lbl">승인된 컷</div>
+        </div>
+      </div>
+
+      <div class="gate-cut-info">
+        <span class="ci-title">컷 1 · HOOK</span>
+        <span class="ci-line">“이 돔은 2000년째 무너지지 않고 있습니다.” — ① slow push-in</span>
+        <span class="ci-len">TTS 3.1s · 후보 4장 · 생성 2회차</span>
+      </div>
+
+      <div class="cand-grid" id="candGrid">
+        <article class="card cand" data-cand="A" tabindex="0" role="button" aria-pressed="false">
+          <div class="cand-img g-pantheon-ext">
+            <span class="cand-tag">CAND-A</span>
+            <span class="cand-pick" aria-hidden="true">✓</span>
+          </div>
+          <div class="cand-meta">
+            <span class="cm-name">외부 전경 · 로우앵글</span>
+            <span class="cm-seed">seed 48213</span>
+          </div>
+        </article>
+        <article class="card cand selected" data-cand="B" tabindex="0" role="button" aria-pressed="true">
+          <div class="cand-img g-oculus">
+            <span class="cand-tag">CAND-B</span>
+            <span class="cand-pick" aria-hidden="true">✓</span>
+          </div>
+          <div class="cand-meta">
+            <span class="cm-name">오쿨루스 광선 · 내부</span>
+            <span class="cm-seed">seed 51077</span>
+          </div>
+        </article>
+        <article class="card cand" data-cand="C" tabindex="0" role="button" aria-pressed="false">
+          <div class="cand-img g-cross">
+            <span class="cand-tag">CAND-C</span>
+            <span class="cand-pick" aria-hidden="true">✓</span>
+          </div>
+          <div class="cand-meta">
+            <span class="cm-name">단면 리컨스트럭션</span>
+            <span class="cm-seed">seed 49930</span>
+          </div>
+        </article>
+        <article class="card cand" data-cand="D" tabindex="0" role="button" aria-pressed="false">
+          <div class="cand-img g-cutaway">
+            <span class="cand-tag">CAND-D</span>
+            <span class="cand-pick" aria-hidden="true">✓</span>
+          </div>
+          <div class="cand-meta">
+            <span class="cm-name">구조 컷어웨이</span>
+            <span class="cm-seed">seed 50412</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="style-lock">
+        <b>STYLE LOCK</b> — 모든 후보에 동일 부착됨 · photorealistic architectural visualization, cinematic documentary lighting,
+        physically accurate materials, museum-quality reconstruction, muted cool color grade, high structural detail, 9:16 vertical
+      </div>
+
+      <div class="card gate-actions">
+        <span class="picked-info" id="pickedInfo">선택됨: <strong>CAND-B · 오쿨루스 광선</strong></span>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost">전체 반려 · 재생성 (3회차)</button>
+        <button class="btn btn-gold" id="approveBtn">이 프레임 승인 → 다음 컷</button>
+      </div>
+
+      <p class="lock-note">
+        <span class="gate-diamond locked" aria-hidden="true"></span>
+        클립(I2V) 단계는 5컷 모두 승인될 때까지 잠겨 있습니다 — 승인된 프레임만 영상 생성에 사용됩니다.
+      </p>
+    </section>
+
+    <footer class="app-foot">
+      <span>Shortsrator 목업 · 정적 HTML (더미 데이터)</span>
+      <span class="mono">theme: architecture-mystery v1</span>
+      <span class="mono">adapter: higgsfield-api → fallback: MANUAL</span>
+    </footer>
+  </div>
+
+  <script>
+    // 화면 전환 (탭 + 화면 내부 이동 버튼)
+    const tabs = document.querySelectorAll('nav.tabs [role="tab"]');
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(s =>
+        s.classList.toggle('active', s.id === 'screen-' + name));
+      tabs.forEach(t =>
+        t.setAttribute('aria-selected', String(t.dataset.screen === name)));
+      window.scrollTo({ top: 0 });
+    }
+    tabs.forEach(t => t.addEventListener('click', () => showScreen(t.dataset.screen)));
+    document.querySelectorAll('[data-goto]').forEach(b =>
+      b.addEventListener('click', () => showScreen(b.dataset.goto)));
+
+    // 게이트: 후보 선택
+    const names = { A: '외부 전경', B: '오쿨루스 광선', C: '단면 리컨스트럭션', D: '구조 컷어웨이' };
+    const grid = document.getElementById('candGrid');
+    function pick(card) {
+      grid.querySelectorAll('.cand').forEach(c => {
+        const on = c === card;
+        c.classList.toggle('selected', on);
+        c.setAttribute('aria-pressed', String(on));
+      });
+      document.getElementById('pickedInfo').innerHTML =
+        '선택됨: <strong>CAND-' + card.dataset.cand + ' · ' + names[card.dataset.cand] + '</strong>';
+    }
+    grid.querySelectorAll('.cand').forEach(c => {
+      c.addEventListener('click', () => pick(c));
+      c.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(c); }
+      });
+    });
+
+    // 승인 버튼 — 목업이므로 상태 문구만 갱신
+    document.getElementById('approveBtn').addEventListener('click', function () {
+      this.textContent = '승인됨 — 컷 2로 이동 (목업)';
+      this.disabled = true;
+    });
+  </script>
+</body>
+</html>
