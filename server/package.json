@@ -1,0 +1,17 @@
+{
+  "name": "@shortsrator/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "start": "tsx src/app.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/static": "^8.2.0",
+    "@shortsrator/shared": "*",
+    "fastify": "^5.4.0",
+    "tsx": "^4.20.0"
+  }
+}
