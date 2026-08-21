@@ -19,5 +19,12 @@
 - `scripts/template-update.sh`: 동기화 8경로, HARD EXCLUSIONS 7종(ci.yml·`.mcp.json`·docs/·README.md·settings.local.json·template-origin·제품 코드). **CLAUDE.md·settings.json은 덮어쓰기 전 `.template-update-backup/<UTC>/` 백업 + diff 제시, 백업 실패 시 exit 1**. 검토 명령은 `git diff --cached`(bare `git diff`는 0줄). 백업 폴더 제외는 `.git/info/exclude`
 - `scripts/session-banner.sh`: 모드 감지 파싱은 settings 훅 포함 3곳 문자 단위 동기화 필수. 배너가 STATE "다음 할 일" 2줄 출력
 - `docs/MACHINE.md.example`: 머신 전용 절대경로·명령 메모 틀(사본은 git 미추적)
-- `docs/GOTCHAS.md`: 영어 항목 18개 / 98줄
+- `docs/GOTCHAS.md`: 영어 항목 20개 / 98줄
 - `docs/releases/`: 버전별 변경 기록(한국어, 누적). 규칙·노트 형식은 `docs/releases/README.md`(semver 0.x, 노트 1건 상한 60줄), 노트는 `<major>.<minor>.x/<x.y.z>.md`(버전 하위 폴더 필수), 항목은 저장소 전역 고유 코드 `[RN-0001]` + `기존/페인포인트/개선` 3줄. 발행 판단은 `/handoff` 2단계 — 규칙·스킬·훅/설정·`scripts/` 변경 때만. **`docs/`는 HARD EXCLUSIONS라 파생으로 전파되지 않는다 = 템플릿 원본 전용**
+
+## 구조 조사 캐시 (2026-08-21, explorer 97k 토큰 — 재조사 금지)
+`/perf` 성능 분석 + 템플릿 구조 개선안 도출은 **미완**이다. 조사는 끝났고 개선안 도출만 남았다.
+- 규모: 템플릿 기계장치 4,115줄 중 **자동 로드는 408줄(~15k 토큰)** — CLAUDE.md 136 + STATE 22 + GOTCHAS 99(14.9KB) + PROJECT-RULES 7 + `agents/orchestrator.md` 96 + `output-styles/brief.md` 48. 스크립트 2,001줄(49%)은 모델이 아예 안 읽는다.
+- 구조 결함 7: ① CLAUDE.md↔orchestrator.md 요약/상세 분리가 둘 다 항상 로드라 비용을 못 줄이고 규칙 두 벌(~40줄)만 만든다 + 순환 참조 ② `.claude/review/last-verdict.md`가 전역 단일 파일이라 병렬 단위 N개가 서로 덮어쓴다 ③ `/land` SKILL 본문이 Orca를 모르고 `git worktree`만 기술(오버라이드는 orchestrator.md에만) ④ settings.json에 2,600자 인라인 SessionStart 훅(마커 7종+율리우스일 계산)인데 자기 deny로 에이전트가 수정 불가 ⑤ 도구 강제는 오케스트레이터에만 걸려 있고 explorer/reviewer의 읽기 전용은 Bash가 열려 있어 관례일 뿐 ⑥ 오케스트레이터가 Write 불가라 문서 전문이 위임 프롬프트를 통과 — '컨텍스트 덤프 금지'와 정면 충돌 ⑦ GOTCHAS 상한에 줄 수만 있고 바이트 상한이 없다.
+- 규칙 모순 7건: push 게이트를 handoff/kickoff가 우회 / STATE.md 소유권이 land↔architect 충돌 / MAP 규칙의 TEMPLATE-REPO 예외가 CLAUDE.md에 누락 등.
+- SYNC NOTE 3개(status-protocol·import·session-banner)의 선언 사본 목록은 실측 대조 결과 전부 정확. 단 어느 것도 GOTCHAS를 사본으로 세지 않는데 실제로는 규칙 사본을 겸한다.

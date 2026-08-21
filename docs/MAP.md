@@ -25,6 +25,8 @@
 - `higgsfield/` — **공용 벤더 클라이언트**: `client.ts`(Higgsfield API 호출), `job-adapter-base.ts`(잡 제출→폴링 공통 베이스). image/video 어댑터가 공유한다.
 - `image/` — `higgsfield-image-adapter.ts`: Higgsfield 이미지 생성 어댑터
 - `video/` — `higgsfield-video-adapter.ts`, `start-end-chain.ts`(시작/끝 프레임 체인), `motion-map.ts`
+  - startEnd는 신 표면 `POST /higgsfield-ai/dop/{lite|standard|turbo}/first-last-frame`(본문 `prompt`/`image_url`/`end_image_url`/`motions:[{id,strength}]`). 벤더는 이미지 URL로 http/https만 받는다(로컬 경로 422) → `POST /files/generate-upload-url` 프리사인 업로드 경유. 상태 조회는 구 표면 우선 + 404/405 시 `/requests/{id}/status` 폴백.
+  - i2v는 아직 구 표면(`/v1/image2video/{model}`) — 전환 미완, STATE 참조. 설정 티어→벤더 티어 매핑은 `wiring/adapter-set.ts`의 `DOP_TIER_BY_SETTING`(라이트→lite / 표준→turbo / 고품질→standard).
 - `manual/` — `manual-base.ts`, `manual-adapters.ts`: 수동(MANUAL) 폴백 어댑터
 - 테스트는 각 소스 옆 `*.test.ts` 동거 배치 (vitest)
 
