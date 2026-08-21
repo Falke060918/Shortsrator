@@ -39,18 +39,27 @@ function makeAdapter() {
 
 describe("resolveMotionId", () => {
   it("카메라 문법 7종 키워드를 motion_id로 매핑한다", () => {
+    // 실값 UUID — GET /v1/motions 실측 (2026-08-21 스모크), 주석은 벤더 모션 이름
     expect(resolveMotionId("Slow push-in toward the oculus")).toBe(
-      "slow_push_in",
+      "81ca2cd2-05db-4222-9ba0-a32e5185adfb", // Dolly In
     );
-    expect(resolveMotionId("dolly forward with tilt up")).toBe("dolly_tilt");
-    expect(resolveMotionId("orbit around the dome")).toBe("orbit");
-    expect(resolveMotionId("fly-through the entrance")).toBe("fly_through");
-    expect(resolveMotionId("descending drone shot")).toBe("descending_drone");
+    expect(resolveMotionId("dolly forward with tilt up")).toBe(
+      "2c9af101-fe7a-4299-91f3-e44431a0576f", // Tilt up
+    );
+    expect(resolveMotionId("orbit around the dome")).toBe(
+      "ea035f68-b350-40f1-b7f4-7dff999fdd67", // 360 Orbit
+    );
+    expect(resolveMotionId("fly-through the entrance")).toBe(
+      "7673d9e0-208c-4cf8-8b72-fce5b0e92ecb", // FPV Drone
+    );
+    expect(resolveMotionId("descending drone shot")).toBe(
+      "b26dcbe5-e784-4893-b8a3-2bd4f848e90a", // Crane Down
+    );
     expect(resolveMotionId("macro detail then pull back")).toBe(
-      "macro_pull_back",
+      "679c128d-a109-4267-8007-12f653f6346d", // Super Dolly Out
     );
     expect(resolveMotionId("follow path of the water channel")).toBe(
-      "follow_path",
+      "1d5ee550-a8b2-4200-8909-4ca7795911dc", // Flying
     );
   });
 
@@ -79,7 +88,7 @@ describe("HiggsfieldVideoAdapter.i2v", () => {
     expect(submissions[0].payload).toEqual({
       medias: [{ role: "image", url: "frames/shot1.png" }],
       motion_prompt: "orbit around the dome, dust motes drifting",
-      motion_id: "orbit",
+      motion_id: "ea035f68-b350-40f1-b7f4-7dff999fdd67", // 360 Orbit
       duration_sec: 3,
     });
   });
@@ -108,7 +117,9 @@ describe("HiggsfieldVideoAdapter.startEnd", () => {
       { role: "start_image", url: "frames/exterior.png" },
       { role: "end_image", url: "frames/interior.png" },
     ]);
-    expect(submissions[0].payload.motion_id).toBe("fly_through");
+    expect(submissions[0].payload.motion_id).toBe(
+      "7673d9e0-208c-4cf8-8b72-fce5b0e92ecb", // FPV Drone
+    );
   });
 });
 
