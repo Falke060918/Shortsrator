@@ -140,20 +140,7 @@ claude 실행
 | `docs/PROJECT-RULES.md` | 프로젝트 전용 규칙 기록              | 템플릿 업데이트 시에도 유지                       |
 | `docs/MACHINE.md`       | 해당 컴퓨터에서만 사용하는 경로·명령 기록    | Git 미추적, `MACHINE.md.example` 복사 후 사용 |
 
-## 설치·시작
-
-```powershell
-gh repo create 내프로젝트 --private --template Falke060918/claude-starter --clone
-cd 내프로젝트
-claude
-```
-
-1. **최초 실행** — 폴더 신뢰 확인 승인
-2. **초기 설정** — **[SETUP.md](SETUP.md)** 체크리스트 진행
-3. **rtk** — 긴 셸 출력을 압축하는 도구. 미설치 시 자동 감지 후 설치 진행
-4. **프로젝트 시작** — `/kickoff "아이디어 한 줄"`
-
-주요 명령 :
+## 주요 명령
 
 * `/kickoff` — 아이디어 구체화 → 기능·목표 정리 → 목업 제작 및 승인
 * `/architect` — 기술·스택·데이터 구조·구현 방식 결정
