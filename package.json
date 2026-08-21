@@ -17,11 +17,14 @@
     "start": "npm run build -w web && npm run start -w server",
     "build": "npm run typecheck && npm run build -w web",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "e2e:server": "node e2e/start-server.mjs",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^24.0.0",
     "concurrently": "^9.2.0",
     "eslint": "^9.30.0",

@@ -17,7 +17,8 @@
 | `server/src/theme/` | 테마 프리셋 로더 — `loader.ts`, `schema.ts`, `prompt-builder.ts` |
 | `server/src/media/` | ffmpeg 조립 — `assemble.ts`, `probe.ts`, `ffmpeg.ts` |
 | `server/scripts/` | 단발 실행 스크립트 (스모크 등) |
-| `web/src/` | Vite/React UI — `main.tsx`, `App.tsx`, `lib/utils.ts` |
+| `web/src/` | Vite/React UI — `App.tsx`(탭 셸), `screens/`(dashboard·pipeline·frame-gate·clip-gate·settings), `components/ui/`(shadcn), `components/parts/`, `fixtures/`, `lib/` |
+| `e2e/` | Playwright e2e — `settings.spec.ts`, `start-server.mjs`(격리 workspace/.env 서버 부트) |
 | `scripts/` | 템플릿/저장소 관리 스크립트 (제품 코드 아님) |
 
 ## server/src/adapters/ 구조
@@ -31,6 +32,7 @@
 루트에서 실행:
 - 개발: `npm run dev` (server+web concurrently) / 프로덕션: `npm run start`
 - 4축 검증: `npm run test`(vitest) / `npm run lint`(eslint) / `npm run typecheck`(워크스페이스별 tsc --noEmit) / `npm run build`(typecheck + web vite build)
+- e2e: `npm run test:e2e`(Playwright — web 빌드+서버 부트 포함, 브라우저는 `npx playwright install chromium` 선행 1회)
 - Higgsfield 시작/끝 프레임 스모크: `npx tsx server/scripts/higgsfield-frames-smoke.ts --start <URL> --end <URL>`
 
 ## 컨벤션

@@ -34,14 +34,15 @@ POST /api/shots/:id/adopt {assetId, inMs, outMs}        GATE3 클립 채택
 POST /api/episodes/:id/rollback {toState}
 GET  /api/episodes/:id/events            SSE(잡 진행·상태 전이) — 폴백: 상태 폴링
 POST /api/manual/:jobId/files            MANUAL 드롭 업로드(multipart)
-GET/PUT /api/settings                    어댑터 모드·TTS 벤더·예산(키 값 자체는 미노출)
+GET/PUT /api/settings                    어댑터 모드·TTS 벤더·예산·Higgsfield 티어(키 값 자체는 미노출)
+PUT  /api/settings/keys                  API 키 기록(쓰기 전용 — .env 반영, 빈 값=삭제, 값 미반환)
 GET  /media/*                            workspace 정적 서빙(읽기 전용)
 ```
 게이트 대기는 SSE 1채널(+폴링 폴백). 웹소켓 불사용.
 
 ## 보안 경계 (로컬 앱)
 - 서버 **127.0.0.1 바인딩 고정**, 앱 자체 인증 없음(1인 로컬).
-- API 키는 `.env`(gitignore)만, 모든 벤더 호출은 서버 측 — 브라우저에 키 미전송, UI엔 "설정됨/누락"만.
+- API 키 저장소는 `.env`(gitignore) 단일, 모든 벤더 호출은 서버 측. 키 입력은 웹 설정 화면에서도 가능(127.0.0.1 로컬 한정, **쓰기 전용** — `PUT /api/settings/keys`가 `.env`에 기록, 조회는 "설정됨/누락"만, 값 재노출 없음). 기존 "브라우저에 키 미전송" 경계는 2026-08-21 사용자 결정으로 완화(로컬 1인용 전제, issue #11).
 - CORS 개방 없음: dev는 Vite 프록시, 상시는 Fastify가 `web/dist` 동일 오리진 서빙.
 - `/media` 경로 순회 가드, MANUAL 업로드는 png/jpg/webp/mp4/mov 화이트리스트.
 

@@ -99,6 +99,19 @@ export type ServerEvent =
 
 export type TTSVendor = "elevenlabs" | "typecast";
 
+/** Higgsfield 생성 품질 티어 — 비용 조정용 settings KV (기본 standard) */
+export type HiggsfieldTier = "lite" | "standard" | "high";
+
+/** .env로 관리되는 API 키 이름 — 서버 키 기록(PUT /api/settings/keys)의 허용 목록 */
+export const API_KEY_NAMES = [
+  "HF_API_KEY_ID",
+  "HF_API_SECRET",
+  "ANTHROPIC_API_KEY",
+  "ELEVENLABS_API_KEY",
+  "TYPECAST_API_KEY",
+] as const;
+export type ApiKeyName = (typeof API_KEY_NAMES)[number];
+
 /** 키 값 자체는 미노출 — UI에는 "설정됨/누락"만 */
 export interface SettingsDTO {
   adapterModes: {
@@ -110,8 +123,15 @@ export interface SettingsDTO {
   ttsVendor: TTSVendor;
   /** 편당 예산 한도(원) — 기준 3,000~5,000원 */
   budgetKrwPerEpisode: number;
+  higgsfieldTier: HiggsfieldTier;
   apiKeys: Record<string, "configured" | "missing">;
 }
+
+/**
+ * PUT /api/settings/keys — 쓰기 전용 키 기록 (03-architecture 보안 경계 완화분).
+ * 값은 .env에만 기록되고 응답·GET 어디에도 되돌아오지 않는다. 빈 문자열 = 해당 키 삭제.
+ */
+export type SettingsKeysUpdate = Partial<Record<ApiKeyName, string>>;
 
 // ---------------------------------------------------------------- 공통
 

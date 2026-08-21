@@ -10,7 +10,7 @@ import { createWiredPipeline, ensureThemePresets } from "./wiring/index.js";
 
 /** 로컬 1인 앱 — 외부 바인딩 금지 (docs/03-architecture.md 보안 경계) */
 const HOST = "127.0.0.1";
-const PORT = 8787;
+const PORT = Number(process.env.PORT ?? 8787);
 
 /** MANUAL 드롭 업로드 상한 — 로컬 영상 파일 기준 넉넉히 */
 const UPLOAD_FILE_SIZE_LIMIT = 512 * 1024 * 1024;
@@ -33,6 +33,8 @@ export interface BuildAppOptions {
   dbPath?: string;
   /** 테마 프리셋 디렉터리 — 미지정 시 저장소 루트 presets/ */
   presetsDir?: string;
+  /** API 키 기록 대상 .env — 미지정 시 저장소 루트 .env (e2e는 SHORTSRATOR_ENV_FILE로 격리) */
+  envFilePath?: string;
 }
 
 export async function buildApp(options: BuildAppOptions = {}) {
@@ -40,8 +42,16 @@ export async function buildApp(options: BuildAppOptions = {}) {
     logger: process.env.NODE_ENV !== "test",
   });
 
-  const workspaceDir = options.workspaceDir ?? defaultWorkspaceDir;
+  const workspaceDir =
+    options.workspaceDir ??
+    process.env.SHORTSRATOR_WORKSPACE_DIR ??
+    defaultWorkspaceDir;
   mkdirSync(workspaceDir, { recursive: true });
+
+  const envFilePath =
+    options.envFilePath ??
+    process.env.SHORTSRATOR_ENV_FILE ??
+    path.join(repoRoot, ".env");
 
   let dao = options.dao;
   if (!dao) {
@@ -65,7 +75,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(fastifyMultipart, {
     limits: { fileSize: UPLOAD_FILE_SIZE_LIMIT, files: 20 },
   });
-  await registerApiRoutes(app, { dao, pipeline, workspaceDir });
+  await registerApiRoutes(app, { dao, pipeline, workspaceDir, envFilePath });
 
   // web/dist 정적 서빙 — 상시 실행은 동일 오리진(CORS 개방 없음), dev는 Vite 프록시.
   if (existsSync(webDistDir)) {

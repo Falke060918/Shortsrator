@@ -2,7 +2,7 @@
  * api-server 통합테스트 (#9) — inject 기반 + SSE는 실서버(127.0.0.1) 수신.
  * 파이프라인은 MockPipeline 주입 — 실배선은 #10 pilot-integration 소관.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildTestApp, type TestApp } from "./test-utils.js";
@@ -381,6 +381,122 @@ describe("/api/settings", () => {
       payload: { budgetKrwPerEpisode: -1 },
     });
     expect(badBudget.statusCode).toBe(400);
+
+    const badTier = await t.app.inject({
+      method: "PUT",
+      url: "/api/settings",
+      payload: { higgsfieldTier: "ultra" },
+    });
+    expect(badTier.statusCode).toBe(400);
+  });
+
+  it("Higgsfield 티어는 기본 standard, PUT으로 저장·유지된다", async () => {
+    const before = await t.app.inject({ method: "GET", url: "/api/settings" });
+    expect(before.json().higgsfieldTier).toBe("standard");
+
+    const res = await t.app.inject({
+      method: "PUT",
+      url: "/api/settings",
+      payload: { higgsfieldTier: "lite" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().higgsfieldTier).toBe("lite");
+
+    const again = await t.app.inject({ method: "GET", url: "/api/settings" });
+    expect(again.json().higgsfieldTier).toBe("lite");
+  });
+});
+
+// ---------------------------------------------------------------- 키 기록 (#11, 쓰기 전용)
+
+describe("PUT /api/settings/keys", () => {
+  const KEY = "ANTHROPIC_API_KEY";
+  const SECRET = "sk-keys-route-secret-77";
+
+  afterEach(() => {
+    delete process.env[KEY];
+    delete process.env.TYPECAST_API_KEY;
+  });
+
+  it("키를 .env에 기록하고, 응답·GET 어디에도 값을 싣지 않는다", async () => {
+    const res = await t.app.inject({
+      method: "PUT",
+      url: "/api/settings/keys",
+      payload: { [KEY]: SECRET },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().apiKeys[KEY]).toBe("configured");
+    expect(res.body).not.toContain(SECRET);
+
+    // .env 반영 + process.env 갱신
+    expect(readFileSync(t.envFilePath, "utf8")).toContain(`${KEY}=${SECRET}`);
+    expect(process.env[KEY]).toBe(SECRET);
+
+    // GET에도 값은 절대 안 나온다 — configured/missing만
+    const got = await t.app.inject({ method: "GET", url: "/api/settings" });
+    expect(got.json().apiKeys[KEY]).toBe("configured");
+    expect(got.body).not.toContain(SECRET);
+  });
+
+  it("기존 .env의 주석·무관 줄은 보존하고 대상 줄만 교체한다", async () => {
+    writeFileSync(
+      t.envFilePath,
+      `# 주석 줄\n${KEY}=old-value\nTYPECAST_API_KEY=tc-keep\n`,
+      "utf8",
+    );
+    const res = await t.app.inject({
+      method: "PUT",
+      url: "/api/settings/keys",
+      payload: { [KEY]: SECRET },
+    });
+    expect(res.statusCode).toBe(200);
+    const content = readFileSync(t.envFilePath, "utf8");
+    expect(content).toContain("# 주석 줄");
+    expect(content).toContain("TYPECAST_API_KEY=tc-keep");
+    expect(content).toContain(`${KEY}=${SECRET}`);
+    expect(content).not.toContain("old-value");
+  });
+
+  it("빈 문자열은 해당 키를 삭제한다 (.env 줄 제거 + missing 전환)", async () => {
+    await t.app.inject({
+      method: "PUT",
+      url: "/api/settings/keys",
+      payload: { [KEY]: SECRET },
+    });
+    const res = await t.app.inject({
+      method: "PUT",
+      url: "/api/settings/keys",
+      payload: { [KEY]: "" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().apiKeys[KEY]).toBe("missing");
+    expect(process.env[KEY]).toBeUndefined();
+    expect(readFileSync(t.envFilePath, "utf8")).not.toContain(KEY);
+  });
+
+  it("허용 목록 밖 키·문자열 아닌 값·개행 포함 값은 400 (파일 미기록)", async () => {
+    const badName = await t.app.inject({
+      method: "PUT",
+      url: "/api/settings/keys",
+      payload: { EVIL_VAR: "x" },
+    });
+    expect(badName.statusCode).toBe(400);
+
+    const badType = await t.app.inject({
+      method: "PUT",
+      url: "/api/settings/keys",
+      payload: { [KEY]: 123 },
+    });
+    expect(badType.statusCode).toBe(400);
+
+    const badNewline = await t.app.inject({
+      method: "PUT",
+      url: "/api/settings/keys",
+      payload: { [KEY]: "abc\nHACKED=1" },
+    });
+    expect(badNewline.statusCode).toBe(400);
+
+    expect(existsSync(t.envFilePath)).toBe(false);
   });
 });
 

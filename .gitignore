@@ -15,3 +15,7 @@ __pycache__/
 .claude/perf/
 docs/MACHINE.md
 CLAUDE.local.md
+
+# Playwright artifacts
+test-results/
+playwright-report/

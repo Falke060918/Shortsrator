@@ -6,6 +6,7 @@ import { ClipGateScreen } from "@/screens/clip-gate";
 import { DashboardScreen } from "@/screens/dashboard";
 import { FrameGateScreen } from "@/screens/frame-gate";
 import { PipelineScreen } from "@/screens/pipeline";
+import { SettingsScreen } from "@/screens/settings";
 import type { ScreenId } from "@/screens/types";
 
 const TABS: { id: ScreenId; num: string; label: string }[] = [
@@ -13,6 +14,7 @@ const TABS: { id: ScreenId; num: string; label: string }[] = [
   { id: "pipeline", num: "02", label: "파이프라인 진행" },
   { id: "frame-gate", num: "03", label: "컨펌 게이트 · 첫 프레임" },
   { id: "clip-gate", num: "04", label: "클립 발췌 · GATE 3" },
+  { id: "settings", num: "05", label: "설정" },
 ];
 
 export default function App() {
@@ -91,6 +93,9 @@ export default function App() {
         </TabsContent>
         <TabsContent value="clip-gate">
           <ClipGateScreen />
+        </TabsContent>
+        <TabsContent value="settings">
+          <SettingsScreen />
         </TabsContent>
       </Tabs>
 

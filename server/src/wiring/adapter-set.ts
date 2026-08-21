@@ -73,8 +73,10 @@ export class AdapterSet {
     video: new ManualVideoAdapter(),
   };
 
-  private higgsfieldClient?: HiggsfieldClient;
-  private claude?: ClaudeLLMAdapter;
+  // 캐시는 생성 당시 키 값과 함께 보관한다 — 웹 설정에서 키가 바뀌면(.env 기록 후
+  // process.env 갱신, routes/settings.ts) 다음 호출에서 새 키로 재생성된다 (issue #11).
+  private higgsfieldCache?: { keyId: string; secret: string; client: HiggsfieldClient };
+  private claudeCache?: { apiKey: string; adapter: ClaudeLLMAdapter };
 
   constructor(
     private readonly dao: Dao,
@@ -89,16 +91,34 @@ export class AdapterSet {
   }
 
   private client(): HiggsfieldClient {
-    this.higgsfieldClient ??= HiggsfieldClient.fromEnv(this.env);
-    return this.higgsfieldClient;
+    const keyId = this.env.HF_API_KEY_ID ?? "";
+    const secret = this.env.HF_API_SECRET ?? "";
+    if (
+      !this.higgsfieldCache ||
+      this.higgsfieldCache.keyId !== keyId ||
+      this.higgsfieldCache.secret !== secret
+    ) {
+      this.higgsfieldCache = {
+        keyId,
+        secret,
+        client: HiggsfieldClient.fromEnv(this.env),
+      };
+    }
+    return this.higgsfieldCache.client;
   }
 
   llm(): NamedAdapter<LLMAdapter> {
     if (this.mode("llm") === "manual") {
       return { adapter: this.manual.llm, name: "manual" };
     }
-    this.claude ??= new ClaudeLLMAdapter({ apiKey: this.env.ANTHROPIC_API_KEY });
-    return { adapter: this.claude, name: "claude" };
+    const apiKey = this.env.ANTHROPIC_API_KEY ?? "";
+    if (!this.claudeCache || this.claudeCache.apiKey !== apiKey) {
+      this.claudeCache = {
+        apiKey,
+        adapter: new ClaudeLLMAdapter({ apiKey: this.env.ANTHROPIC_API_KEY }),
+      };
+    }
+    return { adapter: this.claudeCache.adapter, name: "claude" };
   }
 
   tts(outputDir: string): NamedAdapter<TTSAdapter> {

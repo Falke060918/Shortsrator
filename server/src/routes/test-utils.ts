@@ -147,6 +147,8 @@ export interface TestApp {
   dao: Dao;
   pipeline: MockPipeline;
   workspaceDir: string;
+  /** 키 기록 테스트용 격리 .env — 실제 저장소 루트 .env를 건드리지 않는다 */
+  envFilePath: string;
   cleanup(): Promise<void>;
 }
 
@@ -155,12 +157,14 @@ export async function buildTestApp(): Promise<TestApp> {
   seedBasic(dao);
   const pipeline = new MockPipeline();
   const workspaceDir = mkdtempSync(path.join(os.tmpdir(), "shortsrator-test-"));
-  const app = await buildApp({ dao, pipeline, workspaceDir });
+  const envFilePath = path.join(workspaceDir, ".env");
+  const app = await buildApp({ dao, pipeline, workspaceDir, envFilePath });
   return {
     app,
     dao,
     pipeline,
     workspaceDir,
+    envFilePath,
     async cleanup() {
       await app.close();
       rmSync(workspaceDir, { recursive: true, force: true });
