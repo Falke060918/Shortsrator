@@ -1,0 +1,56 @@
+확인 결과: API에 있습니다
+
+Higgsfield MCP의 generate_video는 medias[] 배열에 role을 start_image / end_image / image로 명시하도록 설계돼 있습니다. 끝 프레임 지정은 API 레벨에서 지원됩니다.
+
+단서 하나: role은 모델별로 선언된 것만 유효합니다. 모든 비디오 모델이 end_image를 받는 게 아닙니다.
+
+1일차 검증 절차 (크레딧 0원)
+
+models_explore(type:'video') → 각 모델의 medias[].roles에 end_image가 있는지 확인
+후보 모델로 get_cost: true 프리플라이트 → 파라미터 거부 여부 확인
+응답의 adjustments 필드 확인 — 서버가 role을 임의로 coerce했는지 여기 나옵니다
+
+kling3_0, minimax_h3(2K keyframes 명시) 쪽부터 보세요.
+
+그래도 미지원일 때 폴백 (우선순위)
+A. 편집 트랜지션 분할 — 기본 폴백
+컷4a: 시작 이미지 I2V, 전진 1.5초
+컷4b: 끝 이미지 I2V, 후퇴 or reveal 1.5초
+사이: 화이트 플래시 / 휩팬 / 마스크 와이프 (CapCut)
+파이프라인 구조 변경 없음, 크레딧 동일, 실패율 가장 낮음
+신비한건축사전류에서 "외부→내부 진입"은 실제로 플래시 컷으로 처리해도 위화감 없음
+B. 역재생
+
+끝 이미지에서 pull-back 생성 → 편집에서 역재생하면 접근 샷이 됨.
+
+구조물 전용. 먼지·물·사람·깃발 등 방향성 있는 모션이 있으면 즉시 티납니다.
+C. 중간 프레임 삽입
+
+이미지 모델로 A와 B 사이 중간 상태 1장을 만들어 A→중간, 중간→B 두 클립.
+
+이미지 1장 추가 비용. 궤적 통제력은 A보다 높음.
+D. 해당 컷만 외부 모델 라우팅
+
+Kling first/last, Wan 2.7 first/last-frame, PixVerse Key Frame Control 등으로 그 한 컷만 우회.
+
+파이프라인에 두 번째 프로바이더가 생김. 파일럿 단계에서는 비추천.
+파일럿에 대한 권고
+
+4번 컷을 fly-through 단일 I2V로 바꾸고 파일럿을 진행하세요.
+
+파일럿의 목적은 배관 검증(대본→TTS→샷리스트→이미지→영상→선별→편집이 끊김 없이 도는가)이지 특정 기능 검증이 아닙니다. frames 컷은 미확정 변수라 여기 넣으면 파이프라인 실패인지 기능 실패인지 구분이 안 됩니다.
+
+설계 측면에서 진짜 해야 할 것
+
+샷 스펙에 필드 하나 추가:
+
+json
+{
+  "shot_id": "04",
+  "transition_type": "frames | edit_flash | reverse | midframe",
+  "start_image": "...",
+  "end_image": "...",
+  "fallback": "edit_flash"
+}
+
+frames 호출이 실패하면 런타임에 fallback으로 자동 강등되게 두면, 이 질문 자체가 파이프라인 안에서 해결됩니다. 앞서 말한 "모델 교체 가능하게 설계" 원칙이 처음 적용되는 지점이 정확히 여기입니다.
