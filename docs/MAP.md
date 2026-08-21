@@ -8,8 +8,12 @@
 | 경로 | 역할 |
 | --- | --- |
 | `shared/src/` | 워크스페이스 공용 타입·도메인 — `domain.ts`, `dto.ts`, `adapters.ts`(어댑터 인터페이스), `index.ts` |
-| `server/src/` | Fastify 서버 — `app.ts` 진입점 |
+| `server/src/` | Fastify 서버 — `app.ts` 진입점(127.0.0.1:8787, DB 오픈·마이그레이션·multipart·web/dist 서빙 조립) |
+| `server/src/routes/` | REST+SSE 라우트 — `index.ts`(registerApiRoutes+`/media` 정적), `episodes.ts`, `state.ts`, `shots.ts`, `manual.ts`(드롭 업로드), `settings.ts`, `pipeline-service.ts`(PipelineService 주입 계약 — 실배선은 #10) |
+| `server/src/db/` | SQLite 계층 — `db.ts`(node:sqlite 격리 래퍼), `migrate.ts`, `dao.ts`, `migrations/` |
 | `server/src/adapters/` | 미디어 생성 어댑터 계층 (아래 상세) |
+| `server/src/media/` | ffmpeg 조립 — `assemble.ts`, `probe.ts`, `ffmpeg.ts` |
+| `server/src/theme/` | 테마 프리셋 로더 — `loader.ts`, `schema.ts`, `prompt-builder.ts` |
 | `server/scripts/` | 단발 실행 스크립트 (스모크 등) |
 | `web/src/` | Vite/React UI — `main.tsx`, `App.tsx`, `lib/utils.ts` |
 | `scripts/` | 템플릿/저장소 관리 스크립트 (제품 코드 아님) |
