@@ -8,9 +8,10 @@ M2(MVP) 완료 — /architect 승인 후 이슈 #1~#10 전부 구현·검증·�
 - 모노레포(server/web/shared, Fastify+Vite/React+node:sqlite), 어댑터 4종+MANUAL, 테마 프리셋, ffmpeg 9:16 조립, 상태머신+게이트 불가침, REST+SSE, UI 4화면(fixture)
 - 판테온 15초 5컷 파일럿 E2E 완주 — REQ-PILOT-01 달성 (MANUAL·목 경로, 외부 네트워크 0)
 - 실 API 키는 아직 미투입 — MANUAL 모드만 실동 확인됨
+- #11 settings-ui 랜드: 웹 설정 탭(모드·벤더·예산·티어·API 키 입력, 쓰기 전용) — 키를 웹에서 넣고 실 API 파일럿 가능
 
 ## 다음 할 일 (우선순위 순)
-1. API 키 발급·투입(.env — HF_API_KEY_ID/SECRET, ANTHROPIC_API_KEY, ELEVENLABS/TYPECAST) 후 frames 지원 스모크 실행(server/scripts/higgsfield-frames-smoke.ts) → start_end_video 경로 확정, motion-map.ts의 motion_id 자리표시 실값 교체
+1. API 키 발급·투입(.env 또는 웹 설정 탭 — HF_API_KEY_ID/SECRET, ANTHROPIC_API_KEY, ELEVENLABS/TYPECAST) 후 frames 지원 스모크 실행(server/scripts/higgsfield-frames-smoke.ts) → start_end_video 경로 확정, motion-map.ts의 motion_id 자리표시 실값 교체
 2. 실 API 모드로 파일럿 1회 실측 — 편당 비용 확인(추산 1.8~2.9만원 vs 목표 3~5천원), dop 티어·컷당 생성 횟수 조정
 3. 웹 UI↔실서버 연동 스모크(웹은 fixture로만 검증됨)
 4. 후속 후보: 자막·BGM(범위 제외분), Kling 폴백, YouTube 업로드(P2)
