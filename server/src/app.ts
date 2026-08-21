@@ -52,6 +52,11 @@ export async function buildApp(options: BuildAppOptions = {}) {
     options.envFilePath ??
     process.env.SHORTSRATOR_ENV_FILE ??
     path.join(repoRoot, ".env");
+  // 부팅 시 저장 키 복원(#11) — PUT /api/settings/keys가 기록한 .env를 조건부 로드.
+  // Node 기본 동작 유지: 이미 설정된 process.env 값은 덮어쓰지 않는다.
+  if (existsSync(envFilePath)) {
+    process.loadEnvFile(envFilePath);
+  }
 
   let dao = options.dao;
   if (!dao) {

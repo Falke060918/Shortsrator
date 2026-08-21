@@ -2,10 +2,24 @@
  * api-server 통합테스트 (#9) — inject 기반 + SSE는 실서버(127.0.0.1) 수신.
  * 파이프라인은 MockPipeline 주입 — 실배선은 #10 pilot-integration 소관.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildTestApp, type TestApp } from "./test-utils.js";
+import { buildApp } from "../app.js";
+import {
+  buildTestApp,
+  createTestDao,
+  MockPipeline,
+  type TestApp,
+} from "./test-utils.js";
 
 let t: TestApp;
 
@@ -497,6 +511,41 @@ describe("PUT /api/settings/keys", () => {
     expect(badNewline.statusCode).toBe(400);
 
     expect(existsSync(t.envFilePath)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------- 부팅 시 .env 로드 (#11 회귀)
+
+describe("buildApp — 사전 존재 .env 로드", () => {
+  const KEY = "ELEVENLABS_API_KEY";
+
+  afterEach(() => {
+    delete process.env[KEY];
+  });
+
+  it("부팅 전에 기록된 키가 재시작(재빌드) 후에도 configured로 남는다", async () => {
+    const workspaceDir = mkdtempSync(
+      path.join(os.tmpdir(), "shortsrator-envboot-"),
+    );
+    const envFilePath = path.join(workspaceDir, ".env");
+    writeFileSync(envFilePath, `${KEY}=el-restart-keep-1\n`, "utf8");
+
+    const app = await buildApp({
+      dao: createTestDao(),
+      pipeline: new MockPipeline(),
+      workspaceDir,
+      envFilePath,
+    });
+    try {
+      const res = await app.inject({ method: "GET", url: "/api/settings" });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().apiKeys[KEY]).toBe("configured");
+      // 값 자체는 여전히 미노출
+      expect(res.body).not.toContain("el-restart-keep-1");
+    } finally {
+      await app.close();
+      rmSync(workspaceDir, { recursive: true, force: true });
+    }
   });
 });
 
