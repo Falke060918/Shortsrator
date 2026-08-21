@@ -1,27 +1,68 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
+import fastifyMultipart from "@fastify/multipart";
+import { createDao, migrate, openDb, type Dao } from "./db/index.js";
+import {
+  createNotWiredPipeline,
+  registerApiRoutes,
+  type PipelineService,
+} from "./routes/index.js";
 
 /** 로컬 1인 앱 — 외부 바인딩 금지 (docs/03-architecture.md 보안 경계) */
 const HOST = "127.0.0.1";
 const PORT = 8787;
 
-const webDistDir = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../web/dist",
-);
+/** MANUAL 드롭 업로드 상한 — 로컬 영상 파일 기준 넉넉히 */
+const UPLOAD_FILE_SIZE_LIMIT = 512 * 1024 * 1024;
 
-export async function buildApp() {
+const repoRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../..",
+);
+const webDistDir = path.join(repoRoot, "web", "dist");
+const defaultWorkspaceDir = path.join(repoRoot, "workspace");
+
+export interface BuildAppOptions {
+  /** 테스트 주입용 — 미지정 시 workspaceDir의 SQLite 파일을 열어 마이그레이션한다. */
+  dao?: Dao;
+  /** pipeline-engine(#8) 실구현 — 미지정 시 NotWired(조작 요청 503) */
+  pipeline?: PipelineService;
+  /** workspace 루트 — /media 정적 서빙·MANUAL 드롭 저장 위치 */
+  workspaceDir?: string;
+  /** dao 미지정 시 열 DB 파일 경로 (기본: {workspace}/shortsrator.db) */
+  dbPath?: string;
+}
+
+export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({
     logger: process.env.NODE_ENV !== "test",
   });
 
+  const workspaceDir = options.workspaceDir ?? defaultWorkspaceDir;
+  mkdirSync(workspaceDir, { recursive: true });
+
+  let dao = options.dao;
+  if (!dao) {
+    const db = openDb(options.dbPath ?? path.join(workspaceDir, "shortsrator.db"));
+    migrate(db);
+    dao = createDao(db);
+    app.addHook("onClose", async () => {
+      db.close();
+    });
+  }
+  const pipeline = options.pipeline ?? createNotWiredPipeline();
+
   app.get("/api/health", async () => ({ status: "ok" }));
 
-  // web/dist 정적 서빙 자리 — 상시 실행은 동일 오리진(CORS 개방 없음), dev는 Vite 프록시.
-  // API 라우트 로직은 api-server 단위 범위라 여기서는 부팅과 정적 서빙까지만 둔다.
+  await app.register(fastifyMultipart, {
+    limits: { fileSize: UPLOAD_FILE_SIZE_LIMIT, files: 20 },
+  });
+  await registerApiRoutes(app, { dao, pipeline, workspaceDir });
+
+  // web/dist 정적 서빙 — 상시 실행은 동일 오리진(CORS 개방 없음), dev는 Vite 프록시.
   if (existsSync(webDistDir)) {
     await app.register(fastifyStatic, { root: webDistDir });
   }
